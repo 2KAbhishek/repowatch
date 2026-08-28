@@ -1,36 +1,36 @@
 <div align = "center">
 
-<h1><a href="https://github.com/2kabhishek/shelly">shelly</a></h1>
+<h1><a href="https://github.com/2kabhishek/repowatch">repowatch</a></h1>
 
-<a href="https://github.com/2KAbhishek/shelly/blob/main/LICENSE">
-<img alt="License" src="https://img.shields.io/github/license/2kabhishek/shelly?style=flat&color=eee&label="> </a>
+<a href="https://github.com/2KAbhishek/repowatch/blob/main/LICENSE">
+<img alt="License" src="https://img.shields.io/github/license/2kabhishek/repowatch?style=flat&color=eee&label="> </a>
 
-<a href="https://github.com/2KAbhishek/shelly/graphs/contributors">
-<img alt="People" src="https://img.shields.io/github/contributors/2kabhishek/shelly?style=flat&color=ffaaf2&label=People"> </a>
+<a href="https://github.com/2KAbhishek/repowatch/graphs/contributors">
+<img alt="People" src="https://img.shields.io/github/contributors/2kabhishek/repowatch?style=flat&color=ffaaf2&label=People"> </a>
 
-<a href="https://github.com/2KAbhishek/shelly/stargazers">
-<img alt="Stars" src="https://img.shields.io/github/stars/2kabhishek/shelly?style=flat&color=98c379&label=Stars"></a>
+<a href="https://github.com/2KAbhishek/repowatch/stargazers">
+<img alt="Stars" src="https://img.shields.io/github/stars/2kabhishek/repowatch?style=flat&color=98c379&label=Stars"></a>
 
-<a href="https://github.com/2KAbhishek/shelly/network/members">
-<img alt="Forks" src="https://img.shields.io/github/forks/2kabhishek/shelly?style=flat&color=66a8e0&label=Forks"> </a>
+<a href="https://github.com/2KAbhishek/repowatch/network/members">
+<img alt="Forks" src="https://img.shields.io/github/forks/2kabhishek/repowatch?style=flat&color=66a8e0&label=Forks"> </a>
 
-<a href="https://github.com/2KAbhishek/shelly/watchers">
-<img alt="Watches" src="https://img.shields.io/github/watchers/2kabhishek/shelly?style=flat&color=f5d08b&label=Watches"> </a>
+<a href="https://github.com/2KAbhishek/repowatch/watchers">
+<img alt="Watches" src="https://img.shields.io/github/watchers/2kabhishek/repowatch?style=flat&color=f5d08b&label=Watches"> </a>
 
-<a href="https://github.com/2KAbhishek/shelly/pulse">
-<img alt="Last Updated" src="https://img.shields.io/github/last-commit/2kabhishek/shelly?style=flat&color=e06c75&label="> </a>
+<a href="https://github.com/2KAbhishek/repowatch/pulse">
+<img alt="Last Updated" src="https://img.shields.io/github/last-commit/2kabhishek/repowatch?style=flat&color=e06c75&label="> </a>
 
 <h3>Publish CLI Tools 🐚✨</h3>
 
 <figure>
-  <img src="images/screenshot.png" alt="shelly in action">
+  <img src="images/screenshot.png" alt="repowatch in action">
   <br/>
-  <figcaption>shelly in action</figcaption>
+  <figcaption>repowatch in action</figcaption>
 </figure>
 
 </div>
 
-shelly is a `<utility/tool>` that allows `<target_audience>` to `<action>`.
+repowatch is a `<utility/tool>` that allows `<target_audience>` to `<action>`.
 
 ## ✨ Features
 
@@ -48,10 +48,10 @@ shelly is a `<utility/tool>` that allows `<target_audience>` to `<action>`.
 ### 💻 Installation
 
 ```bash
-git clone https://github.com/2kabhishek/shelly
-cd shelly
+git clone https://github.com/2kabhishek/repowatch
+cd repowatch
 # Link mkrepo to a directory that's in PATH (~/.local/bin here)
-ln -sfnv "$PWD/shelly.sh" ~/.local/bin/shelly
+ln -sfnv "$PWD/repowatch.sh" ~/.local/bin/repowatch
 ```
 
 ## 🚀 Usage
@@ -59,14 +59,14 @@ ln -sfnv "$PWD/shelly.sh" ~/.local/bin/shelly
 ```bash
 USAGE:
 
-shelly <REQUIRED> [OPTIONAL]
+repowatch <REQUIRED> [OPTIONAL]
 
 Arguments:
     REQUIRED: Required Argument
     OPTIONAL: Optional Argument
 
 Example:
-    shelly
+    repowatch
 ```
 
 ## 🏗️ What's Next
@@ -83,7 +83,7 @@ Planning to add `<feature/module>`.
 
 ### 🌈 Inspiration
 
-shelly was inspired by `<reason/idea>`.
+repowatch was inspired by `<reason/idea>`.
 
 ### 💡 Challenges/Learnings
 
@@ -108,7 +108,7 @@ shelly was inspired by `<reason/idea>`.
 
 <strong>⭐ hit the star button if you found this useful ⭐</strong><br>
 
-<a href="https://github.com/2KAbhishek/shelly">Source</a>
+<a href="https://github.com/2KAbhishek/repowatch">Source</a>
 | <a href="https://2kabhishek.github.io/blog" target="_blank">Blog </a>
 | <a href="https://twitter.com/2kabhishek" target="_blank">Twitter </a>
 | <a href="https://linkedin.com/in/2kabhishek" target="_blank">LinkedIn </a>
