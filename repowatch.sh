@@ -285,10 +285,11 @@ preview_repo() {
     git -C "$repo_dir" -c color.ui=always log -n 5 --graph --pretty=format:'%C(yellow)%h%Creset %C(cyan)%cr%Creset %s %C(green)(%an)%Creset' 2>&1 || true
     echo
 
+    local stat_width=$(( width > 10 ? width - 4 : 50 ))
     local diff_stat
-    diff_stat="$(git -C "$repo_dir" -c color.ui=always diff --stat 2>&1 || true)"
+    diff_stat="$(git -C "$repo_dir" -c color.ui=always diff --stat="$stat_width" 2>&1 || true)"
     local cached_stat
-    cached_stat="$(git -C "$repo_dir" -c color.ui=always diff --cached --stat 2>&1 || true)"
+    cached_stat="$(git -C "$repo_dir" -c color.ui=always diff --cached --stat="$stat_width" 2>&1 || true)"
 
     if [ -n "$diff_stat" ] || [ -n "$cached_stat" ]; then
         echo -e "${DIM}$rule${NC}"
