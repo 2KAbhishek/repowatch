@@ -399,6 +399,8 @@ main() {
         local selected
         selected="$("$SCRIPT_PATH" --scan-helper "$target_dir" "$recursive" | fzf \
             --ansi \
+            --no-multi \
+            --pointer=" " \
             --delimiter=$'\t' \
             --with-nth=1 \
             --header-lines=3 \
