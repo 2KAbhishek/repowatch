@@ -20,7 +20,7 @@
 <a href="https://github.com/2KAbhishek/repowatch/pulse">
 <img alt="Last Updated" src="https://img.shields.io/github/last-commit/2kabhishek/repowatch?style=flat&color=e06c75&label="> </a>
 
-<h3>Publish CLI Tools 🐚✨</h3>
+<h3>Interactive Multi-Repo Monitor & lazygit Launcher 🛰️✨</h3>
 
 <figure>
   <img src="images/screenshot.png" alt="repowatch in action">
@@ -30,65 +30,79 @@
 
 </div>
 
-repowatch is a `<utility/tool>` that allows `<target_audience>` to `<action>`.
+**repowatch** is an interactive multi-repository dashboard and [lazygit](https://github.com/jesseduffield/lazygit) launcher. When run inside any directory:
+- **If it's already a Git repository**: launches `lazygit` directly.
+- **If it's a parent workspace**: concurrently scans all nested repositories, displays their health/status badges (`clean`, `staged`, `unstaged`, `untracked`, `ahead/behind`), and lets you seamlessly jump into `lazygit` on any repo and return with live-refreshed status.
 
 ## ✨ Features
 
-- Comes with a ready to go shell template
-- Quick documentation with README template
-- Works with [mkrepo](https://github.com/2kabhishek/mkrepo)
+- ⚡ **Instant Multi-Repo Overview**: Concurrent status scanning across dozens of repositories in milliseconds.
+- 🎯 **Direct Pass-Through**: Opens `lazygit` immediately if invoked inside a single Git repository.
+- 🔍 **Interactive TUI**: Powered by `fzf` with live previews showing branch status, recent commit graph, and working tree diffs.
+- 🚦 **Dirty Repo Filtering**: Instant toggle to focus only on repositories needing attention.
+- 🔄 **Seamless Loop**: Launch `lazygit` or `$EDITOR` and return right back to your dashboard with auto-refreshed states.
 
 ## ⚡ Setup
 
 ### ⚙️ Requirements
 
-- foo >= bar
-- bazz
+- `git`
+- `lazygit`
+- `fzf`
 
 ### 💻 Installation
 
 ```bash
 git clone https://github.com/2kabhishek/repowatch
 cd repowatch
-# Link mkrepo to a directory that's in PATH (~/.local/bin here)
+
+# Run setup script to link binary to ~/.local/bin
+./setup.sh
+```
+
+Or manually link:
+```bash
 ln -sfnv "$PWD/repowatch.sh" ~/.local/bin/repowatch
 ```
 
 ## 🚀 Usage
 
 ```bash
-USAGE:
+# Scan current directory (or launch lazygit if inside a repo)
+repowatch
 
-repowatch <REQUIRED> [OPTIONAL]
+# Scan a specific directory
+repowatch ~/Projects
 
-Arguments:
-    REQUIRED: Required Argument
-    OPTIONAL: Optional Argument
+# Show only repositories with uncommitted or unpushed changes
+repowatch -d
 
-Example:
-    repowatch
+# Scan nested subdirectories recursively (up to depth 3)
+repowatch -r ~/Workspaces
 ```
+
+### ⌨️ Keybindings
+
+| Key | Action |
+| :--- | :--- |
+| `<Enter>` | Launch `lazygit` on selected repository |
+| `<Ctrl-O>` | Open repository in `$EDITOR` (`nvim` / `vim`) |
+| `<Ctrl-R>` | Force refresh repository statuses |
+| `<Ctrl-D>` | Toggle filter for dirty repositories |
+| `<Ctrl-G>` | Open repository remote URL in web browser |
+| `<Esc>` / `<Ctrl-C>` | Exit `repowatch` |
 
 ## 🏗️ What's Next
 
-Planning to add `<feature/module>`.
-
-### ✅ To-Do
-
-- [x] Setup repo
-- [ ] Think real hard
-- [ ] Start typing
+- [ ] Batch fetch/pull command across all dirty/clean repos
+- [ ] Custom status grouping / workspace tags
+- [ ] Go / Bubbletea native binary variant
 
 ## 🧑‍💻 Behind The Code
 
 ### 🌈 Inspiration
 
-repowatch was inspired by `<reason/idea>`.
-
-### 💡 Challenges/Learnings
-
-- The main challenges were `<issue/difficulty>`
-- I learned about `<learning/accomplishment>`
+Managing dozens of local repositories across workspaces makes it easy to lose track of uncommitted experiments, stash remnants, or unpushed commits. `repowatch` bridges the gap between workspace oversight and repo-level TUI operations.
 
 ### 🧰 Tooling
 
@@ -100,7 +114,7 @@ repowatch was inspired by `<reason/idea>`.
 ### 🔍 More Info
 
 - [bare-minimum](https://github.com/2kabhishek/bare-minimum) — General purpose template
-- [tiny-web](https://github.com/2kabhishek/tiny-web) — Web app template
+- [gh-repo-man](https://github.com/2kabhishek/gh-repo-man) — GitHub repo manager
 
 <hr>
 
@@ -116,4 +130,3 @@ repowatch was inspired by `<reason/idea>`.
 | <a href="https://2kabhishek.github.io/projects" target="_blank">Other Projects </a>
 
 </div>
-
