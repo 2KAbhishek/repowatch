@@ -85,12 +85,12 @@ repowatch -r ~/Workspaces
 
 | Key | Action |
 | :--- | :--- |
-| `<Enter>` | Launch `lazygit` on selected repository |
-| `<Ctrl-O>` | Open repository in `$EDITOR` (`nvim` / `vim`) |
-| `<Ctrl-R>` | Force refresh repository statuses |
-| `<Ctrl-D>` | Toggle filter for dirty repositories |
-| `<Ctrl-G>` | Open repository remote URL in web browser |
-| `<Esc>` / `<Ctrl-C>` | Exit `repowatch` |
+| `<Enter>` | **View**: Open repository in `lazygit` |
+| `<Ctrl-O>` | **Edit**: Open repository in `$EDITOR` (`nvim` / `vim`) |
+| `<Ctrl-R>` | **Sync**: Refresh repository statuses |
+| `<Ctrl-D>` | **Dirty**: Toggle filter for dirty repositories |
+| `<Ctrl-G>` | **Web**: Open repository remote URL in browser |
+| `<Esc>` / `<Ctrl-C>` | **Quit**: Exit `repowatch` |
 
 ## 🏗️ What's Next
 
