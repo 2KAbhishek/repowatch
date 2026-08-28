@@ -70,7 +70,7 @@ main() {
             setup_symlinks
             ;;
     esac
-    echo "repowatch setup completed successfully! 🛰️✨"
+    echo "repowatch setup completed successfully! 󰊢 "
 }
 
 main "$@"

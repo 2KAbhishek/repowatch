@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# repowatch: Interactive multi-repo monitor & lazygit launcher 🛰️✨
+# repowatch: Interactive multi-repo monitor & lazygit launcher 󰊢 
 # Author: Abhishek (@2kabhishek)
 
 set -e
@@ -21,7 +21,7 @@ NC='\033[0m' # No Color
 
 display_help() {
     cat <<EOF
-repowatch: Interactive multi-repo monitor & lazygit launcher 🛰️✨
+repowatch: Interactive multi-repo monitor & lazygit launcher 󰊢 
 
 Usage: repowatch [directory] [options]
 
@@ -61,8 +61,6 @@ check_dependencies() {
 }
 
 # Fast git status probe for a single repository
-# Output format:
-# [STATUS] [SYNC] [CHANGES] [REPO_NAME] [BRANCH] [LAST_COMMIT] \t [ABSOLUTE_PATH]
 get_repo_summary() {
     local repo_dir="$1"
     local dirty_filter="${2:-false}"
@@ -81,14 +79,17 @@ get_repo_summary() {
         if [ "$dirty_filter" = "true" ]; then
             return
         fi
-        # Empty repo without commits
-        local branch="(empty)"
-        local status_badge="${GREEN}✓ CLEAN${NC}"
-        local sync_badge=" -"
-        local change_summary="-"
-        local last_commit="No commits yet"
-        printf "%b  %-5s  %-12s  ${BOLD}%-22s${NC}  %-16s  ${DIM}%-40s${NC}\t%s\n" \
-            "$status_badge" "$sync_badge" "$change_summary" "$repo_name" "$branch" "$last_commit" "$repo_dir"
+        local status_col="${GREEN} CLEAN${NC}"
+        local sync_col="${DIM}-${NC}       "
+        local changes_col="${DIM}clean         ${NC}"
+        local repo_pad="$(printf "%-22.22s" "$repo_name")"
+        local repo_col="${BOLD}${repo_pad}${NC}"
+        local branch_pad="$(printf "%-14.14s" "(empty)")"
+        local branch_col="${DIM}${branch_pad}${NC}"
+        local commit_pad="$(printf "%-40.40s" "No commits yet")"
+        local commit_col="${DIM}${commit_pad}${NC}"
+
+        echo -e "${status_col}  ${sync_col}  ${changes_col}  ${repo_col}  ${branch_col}  ${commit_col}\t${repo_dir}"
         return
     fi
 
@@ -127,63 +128,103 @@ get_repo_summary() {
         esac
     done <<< "$porcelain_out"
 
-    # Sync badge (ahead / behind)
-    local sync_badge=""
-    if (( ahead > 0 && behind > 0 )); then
-        sync_badge="${PURPLE}↑${ahead} ↓${behind}${NC}"
-    elif (( ahead > 0 )); then
-        sync_badge="${CYAN}↑${ahead}${NC}"
-    elif (( behind > 0 )); then
-        sync_badge="${YELLOW}↓${behind}${NC}"
-    else
-        sync_badge="${DIM}-${NC}"
-    fi
-
-    # Changes breakdown
-    local changes_list=()
-    (( staged > 0 )) && changes_list+=("${GREEN}+${staged}${NC}")
-    (( unstaged > 0 )) && changes_list+=("${YELLOW}~${unstaged}${NC}")
-    (( untracked > 0 )) && changes_list+=("${BLUE}?${untracked}${NC}")
-    (( conflicted > 0 )) && changes_list+=("${RED}!${conflicted}${NC}")
-
-    local change_summary=""
     local is_dirty=0
-    if [ ${#changes_list[@]} -gt 0 ]; then
-        change_summary="$(IFS=' '; echo "${changes_list[*]}")"
-        is_dirty=1
-    else
-        change_summary="${DIM}clean${NC}"
-    fi
+    (( staged > 0 || unstaged > 0 || untracked > 0 || conflicted > 0 )) && is_dirty=1
 
-    # Check if dirty filter is active
+    # Filter out clean repos if dirty_filter is set
     if [ "$dirty_filter" = "true" ] && (( is_dirty == 0 && ahead == 0 && behind == 0 )); then
         return
     fi
 
-    # Status badge
-    local status_badge=""
+    # 1. Status column (7 chars visual)
+    local status_col=""
     if (( is_dirty == 1 || ahead > 0 || behind > 0 )); then
-        status_badge="${RED}${BOLD}● DIRTY${NC}"
+        status_col="${RED}${BOLD} DIRTY${NC}"
     else
-        status_badge="${GREEN}✓ CLEAN${NC}"
+        status_col="${GREEN} CLEAN${NC}"
     fi
 
-    # Branch display
-    local branch_disp="${CYAN}${branch}${NC}"
-    if [[ "$branch" == "(detached)" || "$branch" == "HEAD" ]]; then
-        branch_disp="${YELLOW}${branch}${NC}"
+    # 2. Sync column (8 chars visual)
+    local sync_col=""
+    local sync_str=""
+    if (( ahead > 0 && behind > 0 )); then
+        sync_col="${PURPLE}${ahead} ${behind}${NC}"
+        sync_str="${ahead} ${behind}"
+    elif (( ahead > 0 )); then
+        sync_col="${CYAN}${ahead}${NC}"
+        sync_str="${ahead}"
+    elif (( behind > 0 )); then
+        sync_col="${YELLOW}${behind}${NC}"
+        sync_str="${behind}"
+    else
+        sync_col="${DIM}-${NC}"
+        sync_str="-"
     fi
+    local sync_len=${#sync_str}
+    local sync_pad=$(( 8 - sync_len ))
+    (( sync_pad < 0 )) && sync_pad=0
+    local sync_spaces=""
+    [ $sync_pad -gt 0 ] && sync_spaces="$(printf "%*s" "$sync_pad" "")"
+    sync_col="${sync_col}${sync_spaces}"
 
-    # Last commit snippet (relative date + subject)
+    # 3. Changes column (14 chars visual)
+    local changes_col=""
+    local changes_str=""
+    if (( is_dirty == 0 )); then
+        changes_col="${DIM}clean${NC}"
+        changes_str="clean"
+    else
+        local c_parts=""
+        local c_plain=""
+        if (( staged > 0 )); then
+            c_parts="${GREEN}+${staged}${NC}"
+            c_plain="+${staged}"
+        fi
+        if (( unstaged > 0 )); then
+            [ -n "$c_parts" ] && c_parts="${c_parts} " && c_plain="${c_plain} "
+            c_parts="${c_parts}${YELLOW}~${unstaged}${NC}"
+            c_plain="${c_plain}~${unstaged}"
+        fi
+        if (( untracked > 0 )); then
+            [ -n "$c_parts" ] && c_parts="${c_parts} " && c_plain="${c_plain} "
+            c_parts="${c_parts}${BLUE}?${untracked}${NC}"
+            c_plain="${c_plain}?${untracked}"
+        fi
+        if (( conflicted > 0 )); then
+            [ -n "$c_parts" ] && c_parts="${c_parts} " && c_plain="${c_plain} "
+            c_parts="${c_parts}${RED}!${conflicted}${NC}"
+            c_plain="${c_plain}!${conflicted}"
+        fi
+        changes_col="$c_parts"
+        changes_str="$c_plain"
+    fi
+    local chg_len=${#changes_str}
+    local chg_pad=$(( 14 - chg_len ))
+    (( chg_pad < 0 )) && chg_pad=0
+    local chg_spaces=""
+    [ $chg_pad -gt 0 ] && chg_spaces="$(printf "%*s" "$chg_pad" "")"
+    changes_col="${changes_col}${chg_spaces}"
+
+    # 4. Repo name column (22 chars visual)
+    local repo_pad
+    repo_pad="$(printf "%-22.22s" "$repo_name")"
+    local repo_col="${BOLD}${repo_pad}${NC}"
+
+    # 5. Branch column (14 chars visual)
+    local branch_pad
+    branch_pad="$(printf "%-14.14s" "$branch")"
+    local branch_col="${CYAN}${branch_pad}${NC}"
+    [[ "$branch" == "(detached)" || "$branch" == "HEAD" ]] && branch_col="${YELLOW}${branch_pad}${NC}"
+
+    # 6. Last commit column (40 chars visual)
     local last_commit
     last_commit="$(git -C "$repo_dir" log -1 --format="%cr · %s" 2>/dev/null || echo "No commits")"
-    if [ ${#last_commit} -gt 42 ]; then
-        last_commit="${last_commit:0:39}..."
-    fi
+    local commit_pad
+    commit_pad="$(printf "%-40.40s" "$last_commit")"
+    local commit_col="${DIM}${commit_pad}${NC}"
 
     # Aligned output
-    printf "%b  %-10b  %-22b  ${BOLD}%-22s${NC}  %-24b  ${DIM}%-42s${NC}\t%s\n" \
-        "$status_badge" "$sync_badge" "$change_summary" "$repo_name" "$branch_disp" "$last_commit" "$repo_dir"
+    echo -e "${status_col}  ${sync_col}  ${changes_col}  ${repo_col}  ${branch_col}  ${commit_col}\t${repo_dir}"
 }
 
 # Scan directory for git repositories
@@ -211,7 +252,6 @@ scan_repos() {
         return 1
     fi
 
-    # Concurrently gather status summaries using subshells
     export -f get_repo_summary
     export RED GREEN YELLOW BLUE PURPLE CYAN BOLD DIM NC
 
@@ -226,19 +266,19 @@ preview_repo() {
     local rule
     rule="$(printf '%.0s─' {1..50})"
 
-    echo -e "${BOLD}${CYAN}📁 Repository:${NC} ${BOLD}$repo_dir${NC}"
+    echo -e "${BOLD}${CYAN} Repository:${NC} ${BOLD}$repo_dir${NC}"
     
     local remote_url
     remote_url="$(git -C "$repo_dir" remote get-url origin 2>/dev/null || echo "No remote")"
-    echo -e "${DIM}🌐 Remote:${NC}     $remote_url"
+    echo -e "${DIM}󰖟 Remote:${NC}     $remote_url"
     echo -e "${DIM}$rule${NC}"
 
-    echo -e "${BOLD}${YELLOW}📋 Git Status:${NC}"
+    echo -e "${BOLD}${YELLOW}󰊢 Git Status:${NC}"
     git -C "$repo_dir" -c color.status=always status -sb 2>&1 || true
     echo
 
     echo -e "${DIM}$rule${NC}"
-    echo -e "${BOLD}${PURPLE}📜 Recent Commits:${NC}"
+    echo -e "${BOLD}${PURPLE}󰜘 Recent Commits:${NC}"
     git -C "$repo_dir" -c color.ui=always log -n 5 --graph --pretty=format:'%C(yellow)%h%Creset %C(cyan)%cr%Creset %s %C(green)(%an)%Creset' 2>&1 || true
     echo
 
@@ -249,9 +289,9 @@ preview_repo() {
 
     if [ -n "$diff_stat" ] || [ -n "$cached_stat" ]; then
         echo -e "${DIM}$rule${NC}"
-        echo -e "${BOLD}${RED}📝 Changes Summary:${NC}"
-        [ -n "$cached_stat" ] && echo -e "${GREEN}Staged:${NC}\n$cached_stat"
-        [ -n "$diff_stat" ] && echo -e "${YELLOW}Unstaged:${NC}\n$diff_stat"
+        echo -e "${BOLD}${RED} Changes Summary:${NC}"
+        [ -n "$cached_stat" ] && echo -e "${GREEN} Staged:${NC}\n$cached_stat"
+        [ -n "$diff_stat" ] && echo -e "${YELLOW} Unstaged:${NC}\n$diff_stat"
     fi
 }
 
@@ -263,7 +303,6 @@ open_in_browser() {
         return
     fi
 
-    # Convert SSH / git url to https
     local web_url="$remote_url"
     web_url="${web_url#git@}"
     web_url="${web_url#https://}"
@@ -330,7 +369,6 @@ main() {
         esac
     done
 
-    # Default target directory is PWD
     target_dir="${target_dir:-$PWD}"
     target_dir="$(readlink -f "$target_dir")"
 
@@ -358,8 +396,8 @@ main() {
         local repos_output
         repos_output="$(scan_repos "$target_dir" "$recursive")" || exit 1
 
-        local header="STATUS      SYNC        CHANGES                 REPOSITORY              BRANCH                    LAST COMMIT"
-        local help_bar="<Enter> lazygit | <C-o> ${editor_cmd} | <C-r> refresh | <C-d> toggle dirty | <C-g> browser | <Esc> quit"
+        local header="STATUS   SYNC      CHANGES         REPOSITORY              BRANCH          LAST COMMIT"
+        local help_bar="<Enter> lazygit │ <C-o> ${editor_cmd} │ <C-r> refresh │ <C-d> toggle dirty │ <C-g> browser │ <Esc> quit"
 
         local selected
         selected="$(echo "$repos_output" | fzf \
@@ -368,7 +406,7 @@ main() {
             --with-nth=1 \
             --header="$header"$'\n'"$help_bar" \
             --header-lines=0 \
-            --prompt="🛰️ repowatch [$(basename "$target_dir")] > " \
+            --prompt="󰊢 repowatch [$(basename "$target_dir")] ❯ " \
             --query="$initial_query" \
             --preview="$SCRIPT_PATH --preview-helper {2}" \
             --preview-window="right:52%:wrap:border-left" \
@@ -391,7 +429,6 @@ main() {
         repo_path="$(echo "$selection" | awk -F'\t' '{print $2}')"
 
         if [ -n "$repo_path" ] && [ -d "$repo_path" ]; then
-            # Retain current search query for when we return from lazygit
             initial_query=""
             lazygit -p "$repo_path" || true
         else
