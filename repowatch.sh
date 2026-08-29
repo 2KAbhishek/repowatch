@@ -65,32 +65,32 @@ format_relative_date() {
     d="${d% ago}"
     case "$d" in
     *second*)
-        echo "${d%% second*}s"
+        printf -v "$2" "%ss" "${d%% second*}"
         ;;
     *minute*)
-        echo "${d%% minute*}m"
+        printf -v "$2" "%sm" "${d%% minute*}"
         ;;
     *hour*)
-        echo "${d%% hour*}h"
+        printf -v "$2" "%sh" "${d%% hour*}"
         ;;
     *day*)
-        echo "${d%% day*}d"
+        printf -v "$2" "%sd" "${d%% day*}"
         ;;
     *week*)
-        echo "${d%% week*}w"
+        printf -v "$2" "%sw" "${d%% week*}"
         ;;
     *month*)
         if [[ "$d" =~ ([0-9]+)\ year.*,\ ([0-9]+)\ month ]]; then
-            echo "${BASH_REMATCH[1]}y ${BASH_REMATCH[2]}mo"
+            printf -v "$2" "%sy %smo" "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}"
         else
-            echo "${d%% month*}mo"
+            printf -v "$2" "%smo" "${d%% month*}"
         fi
         ;;
     *year*)
-        echo "${d%% year*}y"
+        printf -v "$2" "%sy" "${d%% year*}"
         ;;
     *)
-        echo "$d"
+        printf -v "$2" "%s" "$d"
         ;;
     esac
 }
@@ -99,8 +99,7 @@ format_relative_date() {
 get_repo_summary() {
     local repo_dir="$1"
     local dirty_filter="${2:-false}"
-    local repo_name
-    repo_name="$(basename "$repo_dir")"
+    local repo_name="${repo_dir##*/}"
 
     if [ ! -d "$repo_dir/.git" ] && [ ! -f "$repo_dir/.git" ]; then
         return
@@ -115,16 +114,17 @@ get_repo_summary() {
             return
         fi
         local status_col="${GREEN}${NC} ${DIM}-       ${NC}"
-        local repo_pad="$(printf "%-22.22s" "$repo_name")"
+        local repo_pad branch_pad date_pad commit_pad
+        printf -v repo_pad "%-22.22s" "$repo_name"
         local repo_col="${BOLD}${repo_pad}${NC}"
-        local branch_pad="$(printf "%-10.10s" "(empty)")"
+        printf -v branch_pad "%-10.10s" "(empty)"
         local branch_col="${DIM}${branch_pad}${NC}"
-        local date_pad="$(printf "%-7.7s" "never")"
+        printf -v date_pad "%-7.7s" "never"
         local date_col="${DIM}${date_pad}${NC}"
-        local commit_pad="$(printf "%-48.48s" "No commits yet")"
+        printf -v commit_pad "%-48.48s" "No commits yet"
         local commit_col="${DIM}${commit_pad}${NC}"
 
-        echo -e "1\t0\t${repo_col} ${SEP} ${status_col} ${SEP} ${branch_pad} ${SEP} ${date_col} ${SEP} ${commit_col}\t${repo_dir}"
+        echo -e "1\t0\t${repo_col} ${SEP} ${status_col} ${SEP} ${branch_col} ${SEP} ${date_col} ${SEP} ${commit_col}\t${repo_dir}"
         return
     fi
 
@@ -225,15 +225,17 @@ get_repo_summary() {
     local chg_pad=$((10 - ${#full_plain}))
     ((chg_pad < 0)) && chg_pad=0
     local chg_spaces=""
-    [ $chg_pad -gt 0 ] && chg_spaces="$(printf "%*s" "$chg_pad" "")"
+    [ $chg_pad -gt 0 ] && printf -v chg_spaces "%*s" "$chg_pad" ""
     local status_col="${badge}${c_parts}${chg_spaces}"
 
     # 2. Repo name column (22 chars visual)
-    local repo_pad="$(printf "%-22.22s" "$repo_name")"
+    local repo_pad
+    printf -v repo_pad "%-22.22s" "$repo_name"
     local repo_col="${BOLD}${repo_pad}${NC}"
 
     # 3. Branch column (10 chars visual)
-    local branch_pad="$(printf "%-10.10s" "$branch")"
+    local branch_pad
+    printf -v branch_pad "%-10.10s" "$branch"
     local branch_col="${CYAN}${branch_pad}${NC}"
     [[ "$branch" == "(detached)" || "$branch" == "HEAD" ]] && branch_col="${YELLOW}${branch_pad}${NC}"
 
@@ -244,12 +246,14 @@ get_repo_summary() {
     local log_rest="${log_raw#*	}"
     local date_raw="${log_rest%%	*}"
     local commit_subj="${log_rest#*	}"
-    local date_clean="$(format_relative_date "$date_raw")"
+    local date_clean
+    format_relative_date "$date_raw" date_clean
 
-    local date_pad="$(printf "%-7.7s" "$date_clean")"
+    local date_pad commit_pad
+    printf -v date_pad "%-7.7s" "$date_clean"
     local date_col="${DIM}${date_pad}${NC}"
 
-    local commit_pad="$(printf "%-48.48s" "$commit_subj")"
+    printf -v commit_pad "%-48.48s" "$commit_subj"
     local commit_col="${commit_pad}"
 
     # Aligned output with vertical column separators
@@ -317,7 +321,7 @@ sync_repos() {
     fi
 
     if [ ${#repo_dirs[@]} -gt 0 ]; then
-        printf "%s\n" "${repo_dirs[@]}" | xargs -P 16 -I {} git -C "{}" fetch --prune -q 2>/dev/null || true
+        printf "%s\0" "${repo_dirs[@]}" | xargs -0 -P 16 -I {} git -C "{}" fetch --prune -q 2>/dev/null || true
     fi
 
     scan_repos "$target_dir" "$recursive" "$dirty_filter"
@@ -330,7 +334,8 @@ preview_repo() {
 
     local width="${FZF_PREVIEW_COLUMNS:-80}"
     local rule
-    rule="$(printf '%.0s─' $(seq 1 "$width"))"
+    printf -v rule '%*s' "$width" ''
+    rule="${rule// /─}"
 
     echo -e "${BOLD}${CYAN} Repository:${NC} ${BOLD}$repo_dir${NC}"
 
@@ -504,8 +509,7 @@ main() {
             break
         fi
 
-        local repo_path
-        repo_path="$(echo "$selection" | awk -F'\t' '{print $2}')"
+        local repo_path="${selection##*$'\t'}"
 
         if [ -n "$repo_path" ] && [ -d "$repo_path" ]; then
             initial_query=""
