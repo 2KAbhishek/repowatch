@@ -107,7 +107,7 @@ get_repo_summary() {
 
     # Read porcelain v2 status and branch info in a single git execution
     local porcelain_out
-    porcelain_out="$(git -C "$repo_dir" status --porcelain=v2 --branch 2>/dev/null || true)"
+    porcelain_out="$(git -c gc.auto=0 --no-optional-locks -C "$repo_dir" status --porcelain=v2 --branch 2>/dev/null || true)"
 
     if [ -z "$porcelain_out" ]; then
         if [ "$dirty_filter" = "true" ]; then
@@ -241,7 +241,7 @@ get_repo_summary() {
 
     # 4. Date & Commit message separated (7 chars date, 48 chars commit)
     local log_raw
-    log_raw="$(git -C "$repo_dir" log -1 --format="%ct%x09%cr%x09%s" 2>/dev/null || echo "0	never	No commits")"
+    log_raw="$(git -c gc.auto=0 --no-optional-locks -C "$repo_dir" log -1 --no-patch --format="%ct%x09%cr%x09%s" 2>/dev/null || echo "0	never	No commits")"
     local commit_time="${log_raw%%	*}"
     local log_rest="${log_raw#*	}"
     local date_raw="${log_rest%%	*}"
@@ -279,7 +279,7 @@ scan_repos() {
     if [ "$recursive" = "true" ]; then
         while IFS= read -r git_entry; do
             repo_dirs+=("$(dirname "$git_entry")")
-        done < <(find "$target_dir" -maxdepth 3 \( -name ".git" \) -print 2>/dev/null | sort)
+        done < <(find "$target_dir" -maxdepth 3 -name ".git" -prune -print 2>/dev/null | sort)
     else
         for dir in "$target_dir"/*/; do
             [ -d "$dir" ] || continue
@@ -297,7 +297,7 @@ scan_repos() {
     export -f get_repo_summary format_relative_date
     export RED GREEN YELLOW BLUE PURPLE CYAN BOLD DIM NC SEP
 
-    printf "%s\n" "${repo_dirs[@]}" | xargs -P 16 -I {} bash -c 'get_repo_summary "$@" '"$dirty_filter" _ {} | sort -k1,1n -k2,2nr | cut -f3-
+    printf "%s\0" "${repo_dirs[@]}" | xargs -0 -P 16 -I {} bash -c 'get_repo_summary "$@" '"$dirty_filter" _ {} | sort -k1,1n -k2,2nr | cut -f3-
 }
 
 # Fetch remote changes in parallel across all repositories, then scan
@@ -310,7 +310,7 @@ sync_repos() {
     if [ "$recursive" = "true" ]; then
         while IFS= read -r git_entry; do
             repo_dirs+=("$(dirname "$git_entry")")
-        done < <(find "$target_dir" -maxdepth 3 \( -name ".git" \) -print 2>/dev/null | sort)
+        done < <(find "$target_dir" -maxdepth 3 -name ".git" -prune -print 2>/dev/null | sort)
     else
         for dir in "$target_dir"/*/; do
             [ -d "$dir" ] || continue
@@ -345,15 +345,15 @@ preview_repo() {
     echo -e "${DIM}$rule${NC}"
 
     echo -e "${BOLD}${YELLOW}󰊢 Git Status:${NC}"
-    git -C "$repo_dir" -c color.status=always status -sb 2>&1 || true
+    git -c color.status=always --no-optional-locks -C "$repo_dir" status -sb 2>&1 || true
     echo
 
     local unpushed_count
-    unpushed_count="$(git -C "$repo_dir" rev-list --count @{u}..HEAD 2>/dev/null || echo 0)"
+    unpushed_count="$(git -c gc.auto=0 --no-optional-locks -C "$repo_dir" rev-list --count @{u}..HEAD 2>/dev/null || echo 0)"
     if ((unpushed_count > 0)); then
         echo -e "${DIM}$rule${NC}"
         echo -e "${BOLD}${CYAN} Unpushed Commits (${unpushed_count}):${NC}"
-        git -C "$repo_dir" -c color.ui=always log -n 5 --graph --pretty=format:'%C(yellow)%h%Creset %C(cyan)%cr%Creset %s' @{u}..HEAD 2>&1 || true
+        git -c color.ui=always --no-optional-locks -C "$repo_dir" log -n 5 --graph --pretty=format:'%C(yellow)%h%Creset %C(cyan)%cr%Creset %s' @{u}..HEAD 2>&1 || true
         echo
         if ((unpushed_count > 5)); then
             echo -e "${DIM}... and $((unpushed_count - 5)) more unpushed commits${NC}\n"
@@ -362,14 +362,14 @@ preview_repo() {
 
     echo -e "${DIM}$rule${NC}"
     echo -e "${BOLD}${PURPLE}󰜘 Recent Commits:${NC}"
-    git -C "$repo_dir" -c color.ui=always log -n 5 --graph --pretty=format:'%C(yellow)%h%Creset %C(cyan)%cr%Creset %s %C(green)(%an)%Creset' 2>&1 || true
+    git -c color.ui=always --no-optional-locks -C "$repo_dir" log -n 5 --graph --pretty=format:'%C(yellow)%h%Creset %C(cyan)%cr%Creset %s %C(green)(%an)%Creset' 2>&1 || true
     echo
 
     local stat_width=$((width > 10 ? width - 4 : 50))
     local diff_stat
-    diff_stat="$(git -C "$repo_dir" -c color.ui=always diff --stat="$stat_width" 2>&1 || true)"
+    diff_stat="$(git -c color.ui=always --no-optional-locks -C "$repo_dir" diff --no-ext-diff --stat="$stat_width" 2>&1 || true)"
     local cached_stat
-    cached_stat="$(git -C "$repo_dir" -c color.ui=always diff --cached --stat="$stat_width" 2>&1 || true)"
+    cached_stat="$(git -c color.ui=always --no-optional-locks -C "$repo_dir" diff --no-ext-diff --cached --stat="$stat_width" 2>&1 || true)"
 
     if [ -n "$diff_stat" ] || [ -n "$cached_stat" ]; then
         echo -e "${DIM}$rule${NC}"
