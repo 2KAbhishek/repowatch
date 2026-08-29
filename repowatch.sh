@@ -311,6 +311,18 @@ preview_repo() {
     git -C "$repo_dir" -c color.status=always status -sb 2>&1 || true
     echo
 
+    local unpushed_count
+    unpushed_count="$(git -C "$repo_dir" rev-list --count @{u}..HEAD 2>/dev/null || echo 0)"
+    if (( unpushed_count > 0 )); then
+        echo -e "${DIM}$rule${NC}"
+        echo -e "${BOLD}${CYAN} Unpushed Commits (${unpushed_count}):${NC}"
+        git -C "$repo_dir" -c color.ui=always log -n 5 --graph --pretty=format:'%C(yellow)%h%Creset %C(cyan)%cr%Creset %s' @{u}..HEAD 2>&1 || true
+        echo
+        if (( unpushed_count > 5 )); then
+            echo -e "${DIM}... and $((unpushed_count - 5)) more unpushed commits${NC}\n"
+        fi
+    fi
+
     echo -e "${DIM}$rule${NC}"
     echo -e "${BOLD}${PURPLE}󰜘 Recent Commits:${NC}"
     git -C "$repo_dir" -c color.ui=always log -n 5 --graph --pretty=format:'%C(yellow)%h%Creset %C(cyan)%cr%Creset %s %C(green)(%an)%Creset' 2>&1 || true
