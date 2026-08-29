@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
 
-# repowatch: Interactive multi-repo monitor & lazygit launcher 󰊢 
-# Author: Abhishek (@2kabhishek)
-
 set -e
 
 VERSION="0.1.0"
@@ -23,7 +20,7 @@ SEP="${DIM}│${NC}"
 
 display_help() {
     cat <<EOF
-repowatch: Interactive multi-repo monitor & lazygit launcher 󰊢 
+repowatch: Interactive multi-repo monitor 󰊢 
 
 Usage: repowatch [directory] [options]
 
@@ -67,27 +64,34 @@ format_relative_date() {
     local d="$1"
     d="${d% ago}"
     case "$d" in
-        *second*)
-            echo "${d%% second*}s" ;;
-        *minute*)
-            echo "${d%% minute*}m" ;;
-        *hour*)
-            echo "${d%% hour*}h" ;;
-        *day*)
-            echo "${d%% day*}d" ;;
-        *week*)
-            echo "${d%% week*}w" ;;
-        *month*)
-            if [[ "$d" =~ ([0-9]+)\ year.*,\ ([0-9]+)\ month ]]; then
-                echo "${BASH_REMATCH[1]}y ${BASH_REMATCH[2]}mo"
-            else
-                echo "${d%% month*}mo"
-            fi
-            ;;
-        *year*)
-            echo "${d%% year*}y" ;;
-        *)
-            echo "$d" ;;
+    *second*)
+        echo "${d%% second*}s"
+        ;;
+    *minute*)
+        echo "${d%% minute*}m"
+        ;;
+    *hour*)
+        echo "${d%% hour*}h"
+        ;;
+    *day*)
+        echo "${d%% day*}d"
+        ;;
+    *week*)
+        echo "${d%% week*}w"
+        ;;
+    *month*)
+        if [[ "$d" =~ ([0-9]+)\ year.*,\ ([0-9]+)\ month ]]; then
+            echo "${BASH_REMATCH[1]}y ${BASH_REMATCH[2]}mo"
+        else
+            echo "${d%% month*}mo"
+        fi
+        ;;
+    *year*)
+        echo "${d%% year*}y"
+        ;;
+    *)
+        echo "$d"
+        ;;
     esac
 }
 
@@ -134,43 +138,43 @@ get_repo_summary() {
 
     while IFS= read -r line; do
         case "$line" in
-            \#\ branch.head\ *)
-                branch="${line### branch.head }"
-                ;;
-            \#\ branch.ab\ *)
-                local ab="${line### branch.ab }"
-                ahead="${ab%% -*}"
-                ahead="${ahead#+}"
-                behind="${ab##* -}"
-                ;;
-            1\ ??\ *|2\ ??\ *)
-                local xy="${line:2:2}"
-                local x="${xy:0:1}"
-                local y="${xy:1:1}"
-                [[ "$x" != "." && "$x" != " " ]] && ((staged++)) || true
-                [[ "$y" != "." && "$y" != " " ]] && ((unstaged++)) || true
-                ;;
-            u\ *)
-                ((conflicted++)) || true
-                ;;
-            \?\ *)
-                ((untracked++)) || true
-                ;;
+        \#\ branch.head\ *)
+            branch="${line### branch.head }"
+            ;;
+        \#\ branch.ab\ *)
+            local ab="${line### branch.ab }"
+            ahead="${ab%% -*}"
+            ahead="${ahead#+}"
+            behind="${ab##* -}"
+            ;;
+        1\ ??\ * | 2\ ??\ *)
+            local xy="${line:2:2}"
+            local x="${xy:0:1}"
+            local y="${xy:1:1}"
+            [[ "$x" != "." && "$x" != " " ]] && ((staged++)) || true
+            [[ "$y" != "." && "$y" != " " ]] && ((unstaged++)) || true
+            ;;
+        u\ *)
+            ((conflicted++)) || true
+            ;;
+        \?\ *)
+            ((untracked++)) || true
+            ;;
         esac
-    done <<< "$porcelain_out"
+    done <<<"$porcelain_out"
 
     local is_dirty=0
-    (( staged > 0 || unstaged > 0 || untracked > 0 || conflicted > 0 )) && is_dirty=1
+    ((staged > 0 || unstaged > 0 || untracked > 0 || conflicted > 0)) && is_dirty=1
 
     # Filter out clean repos if dirty_filter is set
-    if [ "$dirty_filter" = "true" ] && (( is_dirty == 0 && ahead == 0 && behind == 0 )); then
+    if [ "$dirty_filter" = "true" ] && ((is_dirty == 0 && ahead == 0 && behind == 0)); then
         return
     fi
 
     # 1. Status column (Status Icon + Sync + Local changes) - 10 chars visual
     local sort_key=1
     local badge=""
-    if (( is_dirty == 1 || ahead > 0 || behind > 0 )); then
+    if ((is_dirty == 1 || ahead > 0 || behind > 0)); then
         sort_key=0
         badge="${RED}${BOLD}${NC} "
     else
@@ -180,33 +184,33 @@ get_repo_summary() {
     local c_parts=""
     local c_plain=""
 
-    if (( ahead > 0 && behind > 0 )); then
+    if ((ahead > 0 && behind > 0)); then
         c_parts="${PURPLE}${ahead}${behind}${NC}"
         c_plain="${ahead}${behind}"
-    elif (( ahead > 0 )); then
+    elif ((ahead > 0)); then
         c_parts="${CYAN}${ahead}${NC}"
         c_plain="${ahead}"
-    elif (( behind > 0 )); then
+    elif ((behind > 0)); then
         c_parts="${YELLOW}${behind}${NC}"
         c_plain="${behind}"
     fi
 
-    if (( staged > 0 )); then
+    if ((staged > 0)); then
         [ -n "$c_parts" ] && c_parts="${c_parts} " && c_plain="${c_plain} "
         c_parts="${c_parts}${GREEN}+${staged}${NC}"
         c_plain="${c_plain}+${staged}"
     fi
-    if (( unstaged > 0 )); then
+    if ((unstaged > 0)); then
         [ -n "$c_parts" ] && c_parts="${c_parts} " && c_plain="${c_plain} "
         c_parts="${c_parts}${YELLOW}~${unstaged}${NC}"
         c_plain="${c_plain}~${unstaged}"
     fi
-    if (( untracked > 0 )); then
+    if ((untracked > 0)); then
         [ -n "$c_parts" ] && c_parts="${c_parts} " && c_plain="${c_plain} "
         c_parts="${c_parts}${BLUE}?${untracked}${NC}"
         c_plain="${c_plain}?${untracked}"
     fi
-    if (( conflicted > 0 )); then
+    if ((conflicted > 0)); then
         [ -n "$c_parts" ] && c_parts="${c_parts} " && c_plain="${c_plain} "
         c_parts="${c_parts}${RED}!${conflicted}${NC}"
         c_plain="${c_plain}!${conflicted}"
@@ -218,8 +222,8 @@ get_repo_summary() {
     fi
 
     local full_plain="X ${c_plain}"
-    local chg_pad=$(( 10 - ${#full_plain} ))
-    (( chg_pad < 0 )) && chg_pad=0
+    local chg_pad=$((10 - ${#full_plain}))
+    ((chg_pad < 0)) && chg_pad=0
     local chg_spaces=""
     [ $chg_pad -gt 0 ] && chg_spaces="$(printf "%*s" "$chg_pad" "")"
     local status_col="${badge}${c_parts}${chg_spaces}"
@@ -259,7 +263,7 @@ scan_repos() {
     local dirty_filter="${3:-false}"
     local repo_dirs=()
 
-    local keybindings="${DIM}󰌑 󰈈 · ^d  · ^e 󰏫 · ^g 󰖟 · ^o  · ^r 󰑓${NC}"
+    local keybindings="${DIM}󰌑  · ^d  · ^e  · ^g 󰖟 · ^o  · ^r 󰑓 ${NC}"
     local header="${BOLD}Repository            ${NC} ${SEP} ${BOLD}Status    ${NC} ${SEP} ${BOLD}Branch    ${NC} ${SEP} ${BOLD}Updated${NC} ${SEP} ${BOLD}Last Commit${NC}"
     local divider="${DIM}───────────────────────┼────────────┼────────────┼─────────┼────────────────────────────────────────────────${NC}"
 
@@ -329,7 +333,7 @@ preview_repo() {
     rule="$(printf '%.0s─' $(seq 1 "$width"))"
 
     echo -e "${BOLD}${CYAN} Repository:${NC} ${BOLD}$repo_dir${NC}"
-    
+
     local remote_url
     remote_url="$(git -C "$repo_dir" remote get-url origin 2>/dev/null || echo "No remote")"
     echo -e "${DIM}󰖟 Remote:${NC}     $remote_url"
@@ -341,12 +345,12 @@ preview_repo() {
 
     local unpushed_count
     unpushed_count="$(git -C "$repo_dir" rev-list --count @{u}..HEAD 2>/dev/null || echo 0)"
-    if (( unpushed_count > 0 )); then
+    if ((unpushed_count > 0)); then
         echo -e "${DIM}$rule${NC}"
         echo -e "${BOLD}${CYAN} Unpushed Commits (${unpushed_count}):${NC}"
         git -C "$repo_dir" -c color.ui=always log -n 5 --graph --pretty=format:'%C(yellow)%h%Creset %C(cyan)%cr%Creset %s' @{u}..HEAD 2>&1 || true
         echo
-        if (( unpushed_count > 5 )); then
+        if ((unpushed_count > 5)); then
             echo -e "${DIM}... and $((unpushed_count - 5)) more unpushed commits${NC}\n"
         fi
     fi
@@ -356,7 +360,7 @@ preview_repo() {
     git -C "$repo_dir" -c color.ui=always log -n 5 --graph --pretty=format:'%C(yellow)%h%Creset %C(cyan)%cr%Creset %s %C(green)(%an)%Creset' 2>&1 || true
     echo
 
-    local stat_width=$(( width > 10 ? width - 4 : 50 ))
+    local stat_width=$((width > 10 ? width - 4 : 50))
     local diff_stat
     diff_stat="$(git -C "$repo_dir" -c color.ui=always diff --stat="$stat_width" 2>&1 || true)"
     local cached_stat
@@ -402,49 +406,49 @@ main() {
     # Parse arguments
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            -h|--help)
-                display_help
-                exit 0
-                ;;
-            -v|--version)
-                echo "repowatch v$VERSION"
-                exit 0
-                ;;
-            -d|--dirty)
-                dirty_only=true
-                shift
-                ;;
-            -r|--recursive)
-                recursive=true
-                shift
-                ;;
-            --preview-helper)
-                preview_repo "$2"
-                exit 0
-                ;;
-            --scan-helper)
-                scan_repos "$2" "${3:-false}" "${4:-false}"
-                exit 0
-                ;;
-            --sync-helper)
-                sync_repos "$2" "${3:-false}" "${4:-false}"
-                exit 0
-                ;;
-            --browser-helper)
-                open_in_browser "$2"
-                exit 0
-                ;;
-            -*)
-                echo -e "${RED}Unknown option:${NC} $1" >&2
-                display_help
-                exit 1
-                ;;
-            *)
-                if [ -z "$target_dir" ]; then
-                    target_dir="$1"
-                fi
-                shift
-                ;;
+        -h | --help)
+            display_help
+            exit 0
+            ;;
+        -v | --version)
+            echo "repowatch v$VERSION"
+            exit 0
+            ;;
+        -d | --dirty)
+            dirty_only=true
+            shift
+            ;;
+        -r | --recursive)
+            recursive=true
+            shift
+            ;;
+        --preview-helper)
+            preview_repo "$2"
+            exit 0
+            ;;
+        --scan-helper)
+            scan_repos "$2" "${3:-false}" "${4:-false}"
+            exit 0
+            ;;
+        --sync-helper)
+            sync_repos "$2" "${3:-false}" "${4:-false}"
+            exit 0
+            ;;
+        --browser-helper)
+            open_in_browser "$2"
+            exit 0
+            ;;
+        -*)
+            echo -e "${RED}Unknown option:${NC} $1" >&2
+            display_help
+            exit 1
+            ;;
+        *)
+            if [ -z "$target_dir" ]; then
+                target_dir="$1"
+            fi
+            shift
+            ;;
         esac
     done
 
