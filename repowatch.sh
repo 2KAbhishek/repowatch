@@ -109,7 +109,7 @@ get_repo_summary() {
         if [ "$dirty_filter" = "true" ]; then
             return
         fi
-        local changes_col="${GREEN}${NC} ${DIM}-       ${NC}"
+        local status_col="${GREEN}${NC} ${DIM}-       ${NC}"
         local repo_pad="$(printf "%-22.22s" "$repo_name")"
         local repo_col="${BOLD}${repo_pad}${NC}"
         local branch_pad="$(printf "%-10.10s" "(empty)")"
@@ -119,7 +119,7 @@ get_repo_summary() {
         local commit_pad="$(printf "%-48.48s" "No commits yet")"
         local commit_col="${DIM}${commit_pad}${NC}"
 
-        echo -e "${changes_col} ${SEP} ${repo_col} ${SEP} ${branch_col} ${SEP} ${date_col} ${SEP} ${commit_col}\t${repo_dir}"
+        echo -e "1\t${repo_col} ${SEP} ${status_col} ${SEP} ${branch_col} ${SEP} ${date_col} ${SEP} ${commit_col}\t${repo_dir}"
         return
     fi
 
@@ -166,9 +166,11 @@ get_repo_summary() {
         return
     fi
 
-    # 1. Merged Changes column (Status Icon + Sync + Local changes) - 10 chars visual
+    # 1. Status column (Status Icon + Sync + Local changes) - 10 chars visual
+    local sort_key=1
     local badge=""
     if (( is_dirty == 1 || ahead > 0 || behind > 0 )); then
+        sort_key=0
         badge="${RED}${BOLD}${NC} "
     else
         badge="${GREEN}${NC} "
@@ -219,7 +221,7 @@ get_repo_summary() {
     (( chg_pad < 0 )) && chg_pad=0
     local chg_spaces=""
     [ $chg_pad -gt 0 ] && chg_spaces="$(printf "%*s" "$chg_pad" "")"
-    local changes_col="${badge}${c_parts}${chg_spaces}"
+    local status_col="${badge}${c_parts}${chg_spaces}"
 
     # 2. Repo name column (22 chars visual)
     local repo_pad="$(printf "%-22.22s" "$repo_name")"
@@ -244,7 +246,7 @@ get_repo_summary() {
     local commit_col="${commit_pad}"
 
     # Aligned output with vertical column separators
-    echo -e "${changes_col} ${SEP} ${repo_col} ${SEP} ${branch_col} ${SEP} ${date_col} ${SEP} ${commit_col}\t${repo_dir}"
+    echo -e "${sort_key}\t${repo_col} ${SEP} ${status_col} ${SEP} ${branch_col} ${SEP} ${date_col} ${SEP} ${commit_col}\t${repo_dir}"
 }
 
 # Scan directory for git repositories with pinned headers for fzf
@@ -255,8 +257,8 @@ scan_repos() {
     local repo_dirs=()
 
     local keybindings="${DIM}󰌌 <Enter> View · <C-o> Edit · <C-r> Sync · <C-d> Dirty · <C-g> Web · <Esc> Quit${NC}"
-    local header="${BOLD}Changes   ${NC} ${SEP} ${BOLD}Repository            ${NC} ${SEP} ${BOLD}Branch    ${NC} ${SEP} ${BOLD}Updated${NC} ${SEP} ${BOLD}Last Commit${NC}"
-    local divider="${DIM}───────────┼────────────────────────┼────────────┼─────────┼────────────────────────────────────────────────${NC}"
+    local header="${BOLD}Repository            ${NC} ${SEP} ${BOLD}Status    ${NC} ${SEP} ${BOLD}Branch    ${NC} ${SEP} ${BOLD}Updated${NC} ${SEP} ${BOLD}Last Commit${NC}"
+    local divider="${DIM}───────────────────────┼────────────┼────────────┼─────────┼────────────────────────────────────────────────${NC}"
 
     # Output pinned header lines for fzf --header-lines=3
     echo -e "${keybindings}\t"
@@ -284,7 +286,7 @@ scan_repos() {
     export -f get_repo_summary format_relative_date
     export RED GREEN YELLOW BLUE PURPLE CYAN BOLD DIM NC SEP
 
-    printf "%s\n" "${repo_dirs[@]}" | xargs -P 16 -I {} bash -c 'get_repo_summary "$@" '"$dirty_filter" _ {} | sort -k1,1 -k3,3
+    printf "%s\n" "${repo_dirs[@]}" | xargs -P 16 -I {} bash -c 'get_repo_summary "$@" '"$dirty_filter" _ {} | sort -k1,1 -k2,2 | cut -f2-
 }
 
 # Preview command for fzf
