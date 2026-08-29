@@ -42,7 +42,9 @@ Keybindings (in interactive mode):
   <Ctrl-E>            Edit repository in \$EDITOR
   <Ctrl-G>            Open repository remote in browser
   <Ctrl-O>            Open terminal / subshell in repository
-  <Ctrl-R>            Sync / refresh repository statuses
+  <Ctrl-R>            Refresh repository statuses (local scan)
+  <Ctrl-S>            Sync (pull & push) all repositories
+  <Ctrl-U>            Fetch upstream for all repositories
   <Esc> / <Ctrl-C>    Exit repowatch
 EOF
 }
@@ -267,7 +269,7 @@ scan_repos() {
     local dirty_filter="${3:-false}"
     local repo_dirs=()
 
-    local keybindings="${DIM}󰌑  · ^d  · ^e  · ^g 󰖟 · ^o  · ^r 󰑓 ${NC}"
+    local keybindings="${DIM}󰌑  · ^d  · ^e  · ^g 󰖟 · ^o  · ^r 󰑓 · ^s  · ^u 󰜮 ${NC}"
     local header="${BOLD}Repository            ${NC} ${SEP} ${BOLD}Status    ${NC} ${SEP} ${BOLD}Branch    ${NC} ${SEP} ${BOLD}Updated${NC} ${SEP} ${BOLD}Last Commit${NC}"
     local divider="${DIM}───────────────────────┼────────────┼────────────┼─────────┼────────────────────────────────────────────────${NC}"
 
@@ -300,8 +302,8 @@ scan_repos() {
     printf "%s\0" "${repo_dirs[@]}" | xargs -0 -P 16 -I {} bash -c 'get_repo_summary "$@" '"$dirty_filter" _ {} | sort -k1,1n -k2,2nr | cut -f3-
 }
 
-# Fetch remote changes in parallel across all repositories, then scan
-sync_repos() {
+# Fetch upstream tracking branches across all repositories, then scan
+fetch_repos() {
     local target_dir="$1"
     local recursive="$2"
     local dirty_filter="${3:-false}"
@@ -322,6 +324,77 @@ sync_repos() {
 
     if [ ${#repo_dirs[@]} -gt 0 ]; then
         printf "%s\0" "${repo_dirs[@]}" | xargs -0 -P 16 -I {} git -C "{}" fetch --prune -q 2>/dev/null || true
+    fi
+
+    scan_repos "$target_dir" "$recursive" "$dirty_filter"
+}
+
+# Helper to sync (pull & push) a single repository
+sync_single_repo() {
+    local repo_dir="$1"
+    [ ! -d "$repo_dir/.git" ] && [ ! -f "$repo_dir/.git" ] && return
+
+    # 1. Fetch latest upstream
+    git -c gc.auto=0 --no-optional-locks -C "$repo_dir" fetch --prune -q 2>/dev/null || true
+
+    # 2. Check tracking branch and status
+    if git -c gc.auto=0 --no-optional-locks -C "$repo_dir" rev-parse --abbrev-ref @{u} &>/dev/null; then
+        local status_out
+        status_out="$(git -c gc.auto=0 --no-optional-locks -C "$repo_dir" status --porcelain=v2 --branch 2>/dev/null || true)"
+
+        local ahead=0
+        local behind=0
+        local is_dirty=0
+
+        while IFS= read -r line; do
+            case "$line" in
+            \#\ branch.ab\ *)
+                local ab="${line### branch.ab }"
+                ahead="${ab%% -*}"
+                ahead="${ahead#+}"
+                behind="${ab##* -}"
+                ;;
+            1\ * | 2\ * | u\ * | \?\ *)
+                is_dirty=1
+                ;;
+            esac
+        done <<<"$status_out"
+
+        # Safe Pull: Only fast-forward if behind and worktree is not dirty
+        if ((behind > 0 && is_dirty == 0)); then
+            git -c gc.auto=0 --no-optional-locks -C "$repo_dir" pull --ff-only -q 2>/dev/null || true
+        fi
+
+        # Push: If ahead of remote
+        if ((ahead > 0)); then
+            git -c gc.auto=0 --no-optional-locks -C "$repo_dir" push -q 2>/dev/null || true
+        fi
+    fi
+}
+
+# Full batch sync: Pull upstream changes and push local commits across all repositories
+sync_repos() {
+    local target_dir="$1"
+    local recursive="$2"
+    local dirty_filter="${3:-false}"
+    local repo_dirs=()
+
+    if [ "$recursive" = "true" ]; then
+        while IFS= read -r git_entry; do
+            repo_dirs+=("$(dirname "$git_entry")")
+        done < <(find "$target_dir" -maxdepth 3 -name ".git" -prune -print 2>/dev/null | sort)
+    else
+        for dir in "$target_dir"/*/; do
+            [ -d "$dir" ] || continue
+            if [ -d "$dir/.git" ] || [ -f "$dir/.git" ]; then
+                repo_dirs+=("${dir%/}")
+            fi
+        done
+    fi
+
+    if [ ${#repo_dirs[@]} -gt 0 ]; then
+        export -f sync_single_repo
+        printf "%s\0" "${repo_dirs[@]}" | xargs -0 -P 16 -I {} bash -c 'sync_single_repo "$@"' _ {} 2>/dev/null || true
     fi
 
     scan_repos "$target_dir" "$recursive" "$dirty_filter"
@@ -435,6 +508,10 @@ main() {
             scan_repos "$2" "${3:-false}" "${4:-false}"
             exit 0
             ;;
+        --fetch-helper)
+            fetch_repos "$2" "${3:-false}" "${4:-false}"
+            exit 0
+            ;;
         --sync-helper)
             sync_repos "$2" "${3:-false}" "${4:-false}"
             exit 0
@@ -480,6 +557,9 @@ main() {
     command -v "$editor_cmd" &>/dev/null || editor_cmd="vim"
     command -v "$editor_cmd" &>/dev/null || editor_cmd="nano"
 
+    # Disable terminal flow control so Ctrl-S can be captured cleanly
+    stty -ixon 2>/dev/null || true
+
     while true; do
         local selected
         selected="$("$SCRIPT_PATH" --scan-helper "$target_dir" "$recursive" | fzf \
@@ -498,7 +578,9 @@ main() {
             --bind="ctrl-e:execute($editor_cmd {2} < /dev/tty > /dev/tty 2>&1)+reload($SCRIPT_PATH --scan-helper '$target_dir' $recursive)" \
             --bind="ctrl-g:execute-silent($SCRIPT_PATH --browser-helper {2})" \
             --bind="ctrl-o:execute(cd {2} && \${SHELL:-bash} < /dev/tty > /dev/tty 2>&1)+reload($SCRIPT_PATH --scan-helper '$target_dir' $recursive)" \
-            --bind="ctrl-r:reload($SCRIPT_PATH --sync-helper '$target_dir' $recursive)" \
+            --bind="ctrl-r:reload($SCRIPT_PATH --scan-helper '$target_dir' $recursive)" \
+            --bind="ctrl-s:reload($SCRIPT_PATH --sync-helper '$target_dir' $recursive)" \
+            --bind="ctrl-u:reload($SCRIPT_PATH --fetch-helper '$target_dir' $recursive)" \
             --expect=enter,ctrl-c,esc || true)"
 
         local key

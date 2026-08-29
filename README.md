@@ -85,15 +85,17 @@ repowatch -r ~/Workspaces
 
 ### ⌨️ Keybindings
 
-| Key                  | Action                                                  |
-| :------------------- | :------------------------------------------------------ |
-| `<Enter>`            | **View**: Open repository in `lazygit`                  |
-| `<Ctrl-D>`           | **Dirty**: Toggle filter for dirty repositories         |
-| `<Ctrl-E>`           | **Edit**: Open repository in `$EDITOR` (`nvim` / `vim`) |
-| `<Ctrl-G>`           | **Web**: Open repository remote URL in browser          |
-| `<Ctrl-O>`           | **Terminal**: Open interactive subshell in repository   |
-| `<Ctrl-R>`           | **Sync**: Fetch and refresh all repository statuses     |
-| `<Esc>` / `<Ctrl-C>` | **Quit**: Exit `repowatch`                              |
+| Key                  | Action                                                                |
+| :------------------- | :-------------------------------------------------------------------- |
+| `<Enter>`            | **View**: Open repository in `lazygit`                                |
+| `<Ctrl-D>`           | **Dirty**: Toggle filter for dirty repositories                       |
+| `<Ctrl-E>`           | **Edit**: Open repository in `$EDITOR` (`nvim` / `vim`)               |
+| `<Ctrl-G>`           | **Web**: Open repository remote URL in browser                        |
+| `<Ctrl-O>`           | **Terminal**: Open interactive subshell in repository                 |
+| `<Ctrl-R>`           | **Refresh**: Fast local rescan of repository statuses                 |
+| `<Ctrl-S>`           | **Sync**: Pull upstream changes & push commits across all repositories|
+| `<Ctrl-U>`           | **Upstream**: Fetch remote tracking branches across all repositories  |
+| `<Esc>` / `<Ctrl-C>` | **Quit**: Exit `repowatch`                                            |
 
 ## 🏗️ What's Next
 
