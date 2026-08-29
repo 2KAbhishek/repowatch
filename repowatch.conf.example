@@ -1,0 +1,53 @@
+# Repowatch Configuration File
+# Location: ~/.config/repowatch/config or ~/.repowatchrc
+
+# -----------------------------------------------------------------------------
+# Column Widths (Visual character widths)
+# -----------------------------------------------------------------------------
+repo_width = 22
+status_width = 10
+branch_width = 10
+date_width = 7
+commit_width = 48
+
+# -----------------------------------------------------------------------------
+# Scan Settings
+# -----------------------------------------------------------------------------
+# Maximum directory depth for recursive scanning
+max_depth = 3
+
+# Number of parallel background jobs
+parallel_jobs = 16
+
+# Filter for repositories with uncommitted / unpushed changes by default
+dirty_only = false
+
+# Scan subdirectories recursively by default
+recursive = false
+
+# Preview pane width percentage (default: 50)
+preview_percent = 50
+
+# -----------------------------------------------------------------------------
+# Tools
+# -----------------------------------------------------------------------------
+# Git TUI/Viewer for <Enter> (lazygit, tig, gitui, or custom command)
+view_tool = lazygit
+
+# Preferred editor for <Ctrl-E> (defaults to $EDITOR, nvim, vim, or nano)
+# edit_tool = nvim
+
+# -----------------------------------------------------------------------------
+# Icons & Glyphs (Nerd Fonts)
+# -----------------------------------------------------------------------------
+icon_clean = 
+icon_dirty = 
+icon_ahead = 
+icon_behind = 
+icon_view = 
+icon_edit = 
+icon_web = 󰖟
+icon_shell = 
+icon_refresh = 󰑓
+icon_sync = 
+icon_upstream = 󰜮

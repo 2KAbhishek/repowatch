@@ -87,15 +87,58 @@ repowatch -r ~/Workspaces
 
 | Key                  | Action                                                                |
 | :------------------- | :-------------------------------------------------------------------- |
-| `<Enter>`            | **View**: Open repository in `lazygit`                                |
+| `<Enter>`            | **View**: Open repository in `view_tool` (default: `lazygit`, `tig`, `gitui`)|
 | `<Ctrl-D>`           | **Dirty**: Toggle filter for dirty repositories                       |
-| `<Ctrl-E>`           | **Edit**: Open repository in `$EDITOR` (`nvim` / `vim`)               |
+| `<Ctrl-E>`           | **Edit**: Open repository in `edit_tool` (`$EDITOR` / `nvim` / `vim`)|
 | `<Ctrl-G>`           | **Web**: Open repository remote URL in browser                        |
 | `<Ctrl-O>`           | **Terminal**: Open interactive subshell in repository                 |
 | `<Ctrl-R>`           | **Refresh**: Fast local rescan of repository statuses                 |
 | `<Ctrl-S>`           | **Sync**: Pull upstream changes & push commits across all repositories|
 | `<Ctrl-U>`           | **Upstream**: Fetch remote tracking branches across all repositories  |
 | `<Esc>` / `<Ctrl-C>` | **Quit**: Exit `repowatch`                                            |
+
+### ⚙️ Configuration
+
+`repowatch` can be customized using a simple configuration file located at `~/.config/repowatch/config` or `~/.repowatchrc`.
+
+To generate a starter configuration file with all available options:
+```bash
+repowatch --init-config
+```
+
+Example configuration (`~/.config/repowatch/config`):
+```ini
+# Column Widths
+repo_width = 22
+status_width = 10
+branch_width = 10
+date_width = 7
+commit_width = 48
+
+# Scan Settings
+max_depth = 3
+parallel_jobs = 16
+dirty_only = false
+recursive = false
+preview_percent = 50
+
+# Tools
+view_tool = lazygit   # lazygit, tig, gitui, or any git viewer
+edit_tool = nvim      # defaults to $EDITOR, nvim, vim, or nano
+
+# Icons & Badges (Nerd Fonts)
+icon_clean = 
+icon_dirty = 
+icon_ahead = 
+icon_behind = 
+icon_view = 
+icon_edit = 
+icon_web = 󰖟
+icon_shell = 
+icon_refresh = 󰑓
+icon_sync = 
+icon_upstream = 󰜮
+```
 
 ## 🏗️ What's Next
 
