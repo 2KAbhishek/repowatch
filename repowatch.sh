@@ -62,6 +62,34 @@ check_dependencies() {
     check_command lazygit
 }
 
+format_relative_date() {
+    local d="$1"
+    d="${d% ago}"
+    case "$d" in
+        *second*)
+            echo "${d%% second*}s" ;;
+        *minute*)
+            echo "${d%% minute*}m" ;;
+        *hour*)
+            echo "${d%% hour*}h" ;;
+        *day*)
+            echo "${d%% day*}d" ;;
+        *week*)
+            echo "${d%% week*}w" ;;
+        *month*)
+            if [[ "$d" =~ ([0-9]+)\ year.*,\ ([0-9]+)\ month ]]; then
+                echo "${BASH_REMATCH[1]}y ${BASH_REMATCH[2]}mo"
+            else
+                echo "${d%% month*}mo"
+            fi
+            ;;
+        *year*)
+            echo "${d%% year*}y" ;;
+        *)
+            echo "$d" ;;
+    esac
+}
+
 # Fast git status probe for a single repository
 get_repo_summary() {
     local repo_dir="$1"
@@ -87,9 +115,9 @@ get_repo_summary() {
         local repo_col="${BOLD}${repo_pad}${NC}"
         local branch_pad="$(printf "%-10.10s" "(empty)")"
         local branch_col="${DIM}${branch_pad}${NC}"
-        local date_pad="$(printf "%-12.12s" "never")"
+        local date_pad="$(printf "%-7.7s" "never")"
         local date_col="${DIM}${date_pad}${NC}"
-        local commit_pad="$(printf "%-35.35s" "No commits yet")"
+        local commit_pad="$(printf "%-41.41s" "No commits yet")"
         local commit_col="${DIM}${commit_pad}${NC}"
 
         echo -e "${status_col} ${SEP} ${changes_col} ${SEP} ${repo_col} ${SEP} ${branch_col} ${SEP} ${date_col} ${SEP} ${commit_col}\t${repo_dir}"
@@ -203,17 +231,17 @@ get_repo_summary() {
     local branch_col="${CYAN}${branch_pad}${NC}"
     [[ "$branch" == "(detached)" || "$branch" == "HEAD" ]] && branch_col="${YELLOW}${branch_pad}${NC}"
 
-    # 5. Date & Commit message separated (12 chars date, 35 chars commit)
+    # 5. Date & Commit message separated (7 chars date, 41 chars commit)
     local log_raw
     log_raw="$(git -C "$repo_dir" log -1 --format="%cr%x09%s" 2>/dev/null || echo "never	No commits")"
     local date_raw="${log_raw%%	*}"
     local commit_subj="${log_raw#*	}"
-    local date_clean="${date_raw% ago}"
+    local date_clean="$(format_relative_date "$date_raw")"
 
-    local date_pad="$(printf "%-12.12s" "$date_clean")"
+    local date_pad="$(printf "%-7.7s" "$date_clean")"
     local date_col="${DIM}${date_pad}${NC}"
 
-    local commit_pad="$(printf "%-35.35s" "$commit_subj")"
+    local commit_pad="$(printf "%-41.41s" "$commit_subj")"
     local commit_col="${commit_pad}"
 
     # Aligned output with vertical column separators
@@ -228,8 +256,8 @@ scan_repos() {
     local repo_dirs=()
 
     local keybindings="${DIM}󰌌 <Enter> View · <C-o> Edit · <C-r> Sync · <C-d> Dirty · <C-g> Web · <Esc> Quit${NC}"
-    local header="${BOLD}Status ${NC} ${SEP} ${BOLD}Changes   ${NC} ${SEP} ${BOLD}Repository          ${NC} ${SEP} ${BOLD}Branch    ${NC} ${SEP} ${BOLD}Updated     ${NC} ${SEP} ${BOLD}Last Commit${NC}"
-    local divider="${DIM}────────┼────────────┼──────────────────────┼────────────┼──────────────┼────────────────────────────────────${NC}"
+    local header="${BOLD}Status ${NC} ${SEP} ${BOLD}Changes   ${NC} ${SEP} ${BOLD}Repository          ${NC} ${SEP} ${BOLD}Branch    ${NC} ${SEP} ${BOLD}Updated${NC} ${SEP} ${BOLD}Last Commit${NC}"
+    local divider="${DIM}────────┼────────────┼──────────────────────┼────────────┼─────────┼─────────────────────────────────────────${NC}"
 
     # Output pinned header lines for fzf --header-lines=3
     echo -e "${keybindings}\t"
@@ -254,7 +282,7 @@ scan_repos() {
         return 0
     fi
 
-    export -f get_repo_summary
+    export -f get_repo_summary format_relative_date
     export RED GREEN YELLOW BLUE PURPLE CYAN BOLD DIM NC SEP
 
     printf "%s\n" "${repo_dirs[@]}" | xargs -P 16 -I {} bash -c 'get_repo_summary "$@" '"$dirty_filter" _ {} | sort -k1,1r -k5,5
