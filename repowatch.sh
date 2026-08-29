@@ -171,7 +171,7 @@ get_repo_summary() {
     local badge=""
     if (( is_dirty == 1 || ahead > 0 || behind > 0 )); then
         sort_key=0
-        badge="${RED}${BOLD}${NC} "
+        badge="${RED}${BOLD}${NC} "
     else
         badge="${GREEN}${NC} "
     fi
@@ -258,7 +258,7 @@ scan_repos() {
     local dirty_filter="${3:-false}"
     local repo_dirs=()
 
-    local keybindings="${DIM}󰌌 <Enter> View · <C-o> Edit · <C-r> Sync · <C-d> Dirty · <C-g> Web · <Esc> Quit${NC}"
+    local keybindings="${DIM}󰌑 󰈈 · ^o 󰏫 · ^r 󰑓 · ^d  · ^g 󰖟${NC}"
     local header="${BOLD}Repository            ${NC} ${SEP} ${BOLD}Status    ${NC} ${SEP} ${BOLD}Branch    ${NC} ${SEP} ${BOLD}Updated${NC} ${SEP} ${BOLD}Last Commit${NC}"
     local divider="${DIM}───────────────────────┼────────────┼────────────┼─────────┼────────────────────────────────────────────────${NC}"
 
@@ -433,7 +433,7 @@ main() {
 
     # 2. Multi-Repo Mode: Interactive Dashboard
     local initial_query=""
-    [ "$dirty_only" = true ] && initial_query=" "
+    [ "$dirty_only" = true ] && initial_query=" "
 
     local editor_cmd="${EDITOR:-nvim}"
     command -v "$editor_cmd" &>/dev/null || editor_cmd="vim"
@@ -453,7 +453,7 @@ main() {
             --preview="$SCRIPT_PATH --preview-helper {2}" \
             --preview-window="right:50%:wrap:border-left" \
             --bind="ctrl-r:reload($SCRIPT_PATH --scan-helper '$target_dir' $recursive)" \
-            --bind="ctrl-d:transform-query(if [[ {q} == ** ]]; then echo ''; else echo ' '; fi)" \
+            --bind="ctrl-d:transform-query(if [[ {q} == ** ]]; then echo ''; else echo ' '; fi)" \
             --bind="ctrl-g:execute-silent($SCRIPT_PATH --browser-helper {2})" \
             --bind="ctrl-o:execute($editor_cmd {2} < /dev/tty > /dev/tty 2>&1)+reload($SCRIPT_PATH --scan-helper '$target_dir' $recursive)" \
             --expect=enter,ctrl-c,esc || true)"
