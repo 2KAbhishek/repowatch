@@ -292,6 +292,33 @@ scan_repos() {
     printf "%s\n" "${repo_dirs[@]}" | xargs -P 16 -I {} bash -c 'get_repo_summary "$@" '"$dirty_filter" _ {} | sort -k1,1n -k2,2nr | cut -f3-
 }
 
+# Fetch remote changes in parallel across all repositories, then scan
+sync_repos() {
+    local target_dir="$1"
+    local recursive="$2"
+    local dirty_filter="${3:-false}"
+    local repo_dirs=()
+
+    if [ "$recursive" = "true" ]; then
+        while IFS= read -r git_entry; do
+            repo_dirs+=("$(dirname "$git_entry")")
+        done < <(find "$target_dir" -maxdepth 3 \( -name ".git" \) -print 2>/dev/null | sort)
+    else
+        for dir in "$target_dir"/*/; do
+            [ -d "$dir" ] || continue
+            if [ -d "$dir/.git" ] || [ -f "$dir/.git" ]; then
+                repo_dirs+=("${dir%/}")
+            fi
+        done
+    fi
+
+    if [ ${#repo_dirs[@]} -gt 0 ]; then
+        printf "%s\n" "${repo_dirs[@]}" | xargs -P 16 -I {} git -C "{}" fetch --prune -q 2>/dev/null || true
+    fi
+
+    scan_repos "$target_dir" "$recursive" "$dirty_filter"
+}
+
 # Preview command for fzf
 preview_repo() {
     local repo_dir="$1"
@@ -399,6 +426,10 @@ main() {
                 scan_repos "$2" "${3:-false}" "${4:-false}"
                 exit 0
                 ;;
+            --sync-helper)
+                sync_repos "$2" "${3:-false}" "${4:-false}"
+                exit 0
+                ;;
             --browser-helper)
                 open_in_browser "$2"
                 exit 0
@@ -453,7 +484,7 @@ main() {
             --query="$initial_query" \
             --preview="$SCRIPT_PATH --preview-helper {2}" \
             --preview-window="right:50%:wrap:border-left" \
-            --bind="ctrl-r:reload($SCRIPT_PATH --scan-helper '$target_dir' $recursive)" \
+            --bind="ctrl-r:reload($SCRIPT_PATH --sync-helper '$target_dir' $recursive)" \
             --bind="ctrl-d:transform-query(if [[ {q} == ** ]]; then echo ''; else echo ' '; fi)" \
             --bind="ctrl-g:execute-silent($SCRIPT_PATH --browser-helper {2})" \
             --bind="ctrl-o:execute(cd {2} && \${SHELL:-bash} < /dev/tty > /dev/tty 2>&1)+reload($SCRIPT_PATH --scan-helper '$target_dir' $recursive)" \
