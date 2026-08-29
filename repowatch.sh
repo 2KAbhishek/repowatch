@@ -285,7 +285,7 @@ scan_repos() {
     export -f get_repo_summary format_relative_date
     export RED GREEN YELLOW BLUE PURPLE CYAN BOLD DIM NC SEP
 
-    printf "%s\n" "${repo_dirs[@]}" | xargs -P 16 -I {} bash -c 'get_repo_summary "$@" '"$dirty_filter" _ {} | sort -k1,1r -k5,5
+    printf "%s\n" "${repo_dirs[@]}" | xargs -P 16 -I {} bash -c 'get_repo_summary "$@" '"$dirty_filter" _ {} | sort -k1,1 -k3,3
 }
 
 # Preview command for fzf
