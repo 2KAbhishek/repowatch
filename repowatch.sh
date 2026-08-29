@@ -119,7 +119,7 @@ get_repo_summary() {
         local commit_pad="$(printf "%-48.48s" "No commits yet")"
         local commit_col="${DIM}${commit_pad}${NC}"
 
-        echo -e "1\t${repo_col} ${SEP} ${status_col} ${SEP} ${branch_col} ${SEP} ${date_col} ${SEP} ${commit_col}\t${repo_dir}"
+        echo -e "1\t0\t${repo_col} ${SEP} ${status_col} ${SEP} ${branch_pad} ${SEP} ${date_col} ${SEP} ${commit_col}\t${repo_dir}"
         return
     fi
 
@@ -234,9 +234,11 @@ get_repo_summary() {
 
     # 4. Date & Commit message separated (7 chars date, 48 chars commit)
     local log_raw
-    log_raw="$(git -C "$repo_dir" log -1 --format="%cr%x09%s" 2>/dev/null || echo "never	No commits")"
-    local date_raw="${log_raw%%	*}"
-    local commit_subj="${log_raw#*	}"
+    log_raw="$(git -C "$repo_dir" log -1 --format="%ct%x09%cr%x09%s" 2>/dev/null || echo "0	never	No commits")"
+    local commit_time="${log_raw%%	*}"
+    local log_rest="${log_raw#*	}"
+    local date_raw="${log_rest%%	*}"
+    local commit_subj="${log_rest#*	}"
     local date_clean="$(format_relative_date "$date_raw")"
 
     local date_pad="$(printf "%-7.7s" "$date_clean")"
@@ -246,7 +248,7 @@ get_repo_summary() {
     local commit_col="${commit_pad}"
 
     # Aligned output with vertical column separators
-    echo -e "${sort_key}\t${repo_col} ${SEP} ${status_col} ${SEP} ${branch_col} ${SEP} ${date_col} ${SEP} ${commit_col}\t${repo_dir}"
+    echo -e "${sort_key}\t${commit_time}\t${repo_col} ${SEP} ${status_col} ${SEP} ${branch_col} ${SEP} ${date_col} ${SEP} ${commit_col}\t${repo_dir}"
 }
 
 # Scan directory for git repositories with pinned headers for fzf
@@ -286,7 +288,7 @@ scan_repos() {
     export -f get_repo_summary format_relative_date
     export RED GREEN YELLOW BLUE PURPLE CYAN BOLD DIM NC SEP
 
-    printf "%s\n" "${repo_dirs[@]}" | xargs -P 16 -I {} bash -c 'get_repo_summary "$@" '"$dirty_filter" _ {} | sort -k1,1 -k2,2 | cut -f2-
+    printf "%s\n" "${repo_dirs[@]}" | xargs -P 16 -I {} bash -c 'get_repo_summary "$@" '"$dirty_filter" _ {} | sort -k1,1n -k2,2nr | cut -f3-
 }
 
 # Preview command for fzf
