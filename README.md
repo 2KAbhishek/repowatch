@@ -86,7 +86,8 @@ repowatch -r ~/Workspaces
 | Key | Action |
 | :--- | :--- |
 | `<Enter>` | **View**: Open repository in `lazygit` |
-| `<Ctrl-O>` | **Edit**: Open repository in `$EDITOR` (`nvim` / `vim`) |
+| `<Ctrl-E>` | **Edit**: Open repository in `$EDITOR` (`nvim` / `vim`) |
+| `<Ctrl-O>` | **Terminal**: Open interactive subshell in repository |
 | `<Ctrl-R>` | **Sync**: Refresh repository statuses |
 | `<Ctrl-D>` | **Dirty**: Toggle filter for dirty repositories |
 | `<Ctrl-G>` | **Web**: Open repository remote URL in browser |

@@ -41,7 +41,8 @@ Options:
 
 Keybindings (in interactive mode):
   <Enter>             View repository in lazygit
-  <Ctrl-O>            Edit repository in \$EDITOR
+  <Ctrl-E>            Edit repository in \$EDITOR
+  <Ctrl-O>            Open terminal / subshell in repository
   <Ctrl-R>            Sync / refresh repository statuses
   <Ctrl-D>            Toggle dirty-only filter
   <Ctrl-G>            Open repository remote in browser
@@ -258,7 +259,7 @@ scan_repos() {
     local dirty_filter="${3:-false}"
     local repo_dirs=()
 
-    local keybindings="${DIM}󰌑 󰈈 · ^o 󰏫 · ^r 󰑓 · ^d  · ^g 󰖟${NC}"
+    local keybindings="${DIM}󰌑 󰈈 · ^e 󰏫 · ^o  · ^r 󰑓 · ^d  · ^g 󰖟${NC}"
     local header="${BOLD}Repository            ${NC} ${SEP} ${BOLD}Status    ${NC} ${SEP} ${BOLD}Branch    ${NC} ${SEP} ${BOLD}Updated${NC} ${SEP} ${BOLD}Last Commit${NC}"
     local divider="${DIM}───────────────────────┼────────────┼────────────┼─────────┼────────────────────────────────────────────────${NC}"
 
@@ -455,7 +456,8 @@ main() {
             --bind="ctrl-r:reload($SCRIPT_PATH --scan-helper '$target_dir' $recursive)" \
             --bind="ctrl-d:transform-query(if [[ {q} == ** ]]; then echo ''; else echo ' '; fi)" \
             --bind="ctrl-g:execute-silent($SCRIPT_PATH --browser-helper {2})" \
-            --bind="ctrl-o:execute($editor_cmd {2} < /dev/tty > /dev/tty 2>&1)+reload($SCRIPT_PATH --scan-helper '$target_dir' $recursive)" \
+            --bind="ctrl-o:execute(cd {2} && \${SHELL:-bash} < /dev/tty > /dev/tty 2>&1)+reload($SCRIPT_PATH --scan-helper '$target_dir' $recursive)" \
+            --bind="ctrl-e:execute($editor_cmd {2} < /dev/tty > /dev/tty 2>&1)+reload($SCRIPT_PATH --scan-helper '$target_dir' $recursive)" \
             --expect=enter,ctrl-c,esc || true)"
 
         local key
