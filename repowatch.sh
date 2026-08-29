@@ -110,14 +110,14 @@ get_repo_summary() {
             return
         fi
         local status_col="${GREEN} Clean${NC}"
-        local changes_col="${DIM}-         ${NC}"
+        local changes_col="${DIM}-      ${NC}"
         local repo_pad="$(printf "%-20.20s" "$repo_name")"
         local repo_col="${BOLD}${repo_pad}${NC}"
         local branch_pad="$(printf "%-10.10s" "(empty)")"
         local branch_col="${DIM}${branch_pad}${NC}"
         local date_pad="$(printf "%-7.7s" "never")"
         local date_col="${DIM}${date_pad}${NC}"
-        local commit_pad="$(printf "%-41.41s" "No commits yet")"
+        local commit_pad="$(printf "%-44.44s" "No commits yet")"
         local commit_col="${DIM}${commit_pad}${NC}"
 
         echo -e "${status_col} ${SEP} ${changes_col} ${SEP} ${repo_col} ${SEP} ${branch_col} ${SEP} ${date_col} ${SEP} ${commit_col}\t${repo_dir}"
@@ -175,7 +175,7 @@ get_repo_summary() {
         status_col="${GREEN} Clean${NC}"
     fi
 
-    # 2. Unified Changes column (Sync + Local changes) - 10 chars visual
+    # 2. Unified Changes column (Sync + Local changes) - 7 chars visual
     local c_parts=""
     local c_plain=""
 
@@ -216,7 +216,7 @@ get_repo_summary() {
         c_plain="-"
     fi
 
-    local chg_pad=$(( 10 - ${#c_plain} ))
+    local chg_pad=$(( 7 - ${#c_plain} ))
     (( chg_pad < 0 )) && chg_pad=0
     local chg_spaces=""
     [ $chg_pad -gt 0 ] && chg_spaces="$(printf "%*s" "$chg_pad" "")"
@@ -231,7 +231,7 @@ get_repo_summary() {
     local branch_col="${CYAN}${branch_pad}${NC}"
     [[ "$branch" == "(detached)" || "$branch" == "HEAD" ]] && branch_col="${YELLOW}${branch_pad}${NC}"
 
-    # 5. Date & Commit message separated (7 chars date, 41 chars commit)
+    # 5. Date & Commit message separated (7 chars date, 44 chars commit)
     local log_raw
     log_raw="$(git -C "$repo_dir" log -1 --format="%cr%x09%s" 2>/dev/null || echo "never	No commits")"
     local date_raw="${log_raw%%	*}"
@@ -241,7 +241,7 @@ get_repo_summary() {
     local date_pad="$(printf "%-7.7s" "$date_clean")"
     local date_col="${DIM}${date_pad}${NC}"
 
-    local commit_pad="$(printf "%-41.41s" "$commit_subj")"
+    local commit_pad="$(printf "%-44.44s" "$commit_subj")"
     local commit_col="${commit_pad}"
 
     # Aligned output with vertical column separators
@@ -256,8 +256,8 @@ scan_repos() {
     local repo_dirs=()
 
     local keybindings="${DIM}󰌌 <Enter> View · <C-o> Edit · <C-r> Sync · <C-d> Dirty · <C-g> Web · <Esc> Quit${NC}"
-    local header="${BOLD}Status ${NC} ${SEP} ${BOLD}Changes   ${NC} ${SEP} ${BOLD}Repository          ${NC} ${SEP} ${BOLD}Branch    ${NC} ${SEP} ${BOLD}Updated${NC} ${SEP} ${BOLD}Last Commit${NC}"
-    local divider="${DIM}────────┼────────────┼──────────────────────┼────────────┼─────────┼─────────────────────────────────────────${NC}"
+    local header="${BOLD}Status ${NC} ${SEP} ${BOLD}Changes${NC} ${SEP} ${BOLD}Repository          ${NC} ${SEP} ${BOLD}Branch    ${NC} ${SEP} ${BOLD}Updated${NC} ${SEP} ${BOLD}Last Commit${NC}"
+    local divider="${DIM}────────┼─────────┼──────────────────────┼────────────┼─────────┼────────────────────────────────────────────${NC}"
 
     # Output pinned header lines for fzf --header-lines=3
     echo -e "${keybindings}\t"
