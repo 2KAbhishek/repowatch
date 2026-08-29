@@ -485,6 +485,7 @@ main() {
         selected="$("$SCRIPT_PATH" --scan-helper "$target_dir" "$recursive" | fzf \
             --ansi \
             --no-multi \
+            --no-hscroll \
             --pointer=" " \
             --delimiter=$'\t' \
             --with-nth=1 \
