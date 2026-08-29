@@ -31,6 +31,7 @@
 </div>
 
 **repowatch** is an interactive multi-repository dashboard and [lazygit](https://github.com/jesseduffield/lazygit) launcher. When run inside any directory:
+
 - **If it's already a Git repository**: launches `lazygit` directly.
 - **If it's a parent workspace**: concurrently scans all nested repositories, displays their health/status badges (`clean`, `staged`, `unstaged`, `untracked`, `ahead/behind`), and lets you seamlessly jump into `lazygit` on any repo and return with live-refreshed status.
 
@@ -61,6 +62,7 @@ cd repowatch
 ```
 
 Or manually link:
+
 ```bash
 ln -sfnv "$PWD/repowatch.sh" ~/.local/bin/repowatch
 ```
@@ -83,21 +85,19 @@ repowatch -r ~/Workspaces
 
 ### ⌨️ Keybindings
 
-| Key | Action |
-| :--- | :--- |
-| `<Enter>` | **View**: Open repository in `lazygit` |
-| `<Ctrl-E>` | **Edit**: Open repository in `$EDITOR` (`nvim` / `vim`) |
-| `<Ctrl-O>` | **Terminal**: Open interactive subshell in repository |
-| `<Ctrl-R>` | **Sync**: Refresh repository statuses |
-| `<Ctrl-D>` | **Dirty**: Toggle filter for dirty repositories |
-| `<Ctrl-G>` | **Web**: Open repository remote URL in browser |
-| `<Esc>` / `<Ctrl-C>` | **Quit**: Exit `repowatch` |
+| Key                  | Action                                                  |
+| :------------------- | :------------------------------------------------------ |
+| `<Enter>`            | **View**: Open repository in `lazygit`                  |
+| `<Ctrl-D>`           | **Dirty**: Toggle filter for dirty repositories         |
+| `<Ctrl-E>`           | **Edit**: Open repository in `$EDITOR` (`nvim` / `vim`) |
+| `<Ctrl-G>`           | **Web**: Open repository remote URL in browser          |
+| `<Ctrl-O>`           | **Terminal**: Open interactive subshell in repository   |
+| `<Ctrl-R>`           | **Sync**: Fetch and refresh all repository statuses     |
+| `<Esc>` / `<Ctrl-C>` | **Quit**: Exit `repowatch`                              |
 
 ## 🏗️ What's Next
 
-- [ ] Batch fetch/pull command across all dirty/clean repos
-- [ ] Custom status grouping / workspace tags
-- [ ] Go / Bubbletea native binary variant
+- You tell me!
 
 ## 🧑‍💻 Behind The Code
 

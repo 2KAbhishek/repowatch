@@ -41,11 +41,11 @@ Options:
 
 Keybindings (in interactive mode):
   <Enter>             View repository in lazygit
+  <Ctrl-D>            Toggle dirty-only filter
   <Ctrl-E>            Edit repository in \$EDITOR
+  <Ctrl-G>            Open repository remote in browser
   <Ctrl-O>            Open terminal / subshell in repository
   <Ctrl-R>            Sync / refresh repository statuses
-  <Ctrl-D>            Toggle dirty-only filter
-  <Ctrl-G>            Open repository remote in browser
   <Esc> / <Ctrl-C>    Exit repowatch
 EOF
 }
@@ -259,7 +259,7 @@ scan_repos() {
     local dirty_filter="${3:-false}"
     local repo_dirs=()
 
-    local keybindings="${DIM}󰌑 󰈈 · ^e 󰏫 · ^o  · ^r 󰑓 · ^d  · ^g 󰖟${NC}"
+    local keybindings="${DIM}󰌑 󰈈 · ^d  · ^e 󰏫 · ^g 󰖟 · ^o  · ^r 󰑓${NC}"
     local header="${BOLD}Repository            ${NC} ${SEP} ${BOLD}Status    ${NC} ${SEP} ${BOLD}Branch    ${NC} ${SEP} ${BOLD}Updated${NC} ${SEP} ${BOLD}Last Commit${NC}"
     local divider="${DIM}───────────────────────┼────────────┼────────────┼─────────┼────────────────────────────────────────────────${NC}"
 
@@ -484,11 +484,11 @@ main() {
             --query="$initial_query" \
             --preview="$SCRIPT_PATH --preview-helper {2}" \
             --preview-window="right:50%:wrap:border-left" \
-            --bind="ctrl-r:reload($SCRIPT_PATH --sync-helper '$target_dir' $recursive)" \
             --bind="ctrl-d:transform-query(if [[ {q} == ** ]]; then echo ''; else echo ' '; fi)" \
+            --bind="ctrl-e:execute($editor_cmd {2} < /dev/tty > /dev/tty 2>&1)+reload($SCRIPT_PATH --scan-helper '$target_dir' $recursive)" \
             --bind="ctrl-g:execute-silent($SCRIPT_PATH --browser-helper {2})" \
             --bind="ctrl-o:execute(cd {2} && \${SHELL:-bash} < /dev/tty > /dev/tty 2>&1)+reload($SCRIPT_PATH --scan-helper '$target_dir' $recursive)" \
-            --bind="ctrl-e:execute($editor_cmd {2} < /dev/tty > /dev/tty 2>&1)+reload($SCRIPT_PATH --scan-helper '$target_dir' $recursive)" \
+            --bind="ctrl-r:reload($SCRIPT_PATH --sync-helper '$target_dir' $recursive)" \
             --expect=enter,ctrl-c,esc || true)"
 
         local key
