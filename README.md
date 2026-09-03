@@ -57,13 +57,10 @@
 git clone https://github.com/2kabhishek/repowatch
 cd repowatch
 
-# Run setup script to link binary to ~/.local/bin
+# Automated setup
 ./setup.sh
-```
 
-Or manually link:
-
-```bash
+# Or manual symlink
 ln -sfnv "$PWD/repowatch.sh" ~/.local/bin/repowatch
 ```
 
