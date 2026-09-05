@@ -76,8 +76,8 @@ repowatch ~/Projects
 # Show only repositories with uncommitted or unpushed changes
 repowatch -d
 
-# Scan nested subdirectories recursively (up to depth 3)
-repowatch -r ~/Workspaces
+# Scan recursively with custom depth
+repowatch -r 5 ~/Workspaces
 
 # Force overview mode even if inside a Git repository
 repowatch -o
@@ -85,28 +85,30 @@ repowatch -o
 
 ### ⌨️ Keybindings
 
-| Key                  | Action                                                                |
-| :------------------- | :-------------------------------------------------------------------- |
-| `<Enter>`            | **View**: Open repository in `view_tool` (default: `lazygit`, `tig`, `gitui`)|
-| `<Ctrl-D>`           | **Dirty**: Toggle filter for dirty repositories                       |
-| `<Ctrl-E>`           | **Edit**: Open repository in `edit_tool` (`$EDITOR` / `nvim` / `vim`)|
-| `<Ctrl-G>`           | **Web**: Open repository remote URL in browser                        |
-| `<Ctrl-O>`           | **Terminal**: Open interactive subshell in repository                 |
-| `<Ctrl-R>`           | **Refresh**: Fast local rescan of repository statuses                 |
-| `<Ctrl-S>`           | **Sync**: Pull upstream changes & push commits across all repositories|
-| `<Ctrl-U>`           | **Upstream**: Fetch remote tracking branches across all repositories  |
-| `<Esc>` / `<Ctrl-C>` | **Quit**: Exit `repowatch`                                            |
+| Key                  | Action                                                                 |
+| :------------------- | :--------------------------------------------------------------------- |
+| `<Enter>`            | **View**: Open repository in `view_tool` (default: `lazygit`, `tig`)   |
+| `<Ctrl-D>`           | **Dirty**: Toggle filter for dirty repositories                        |
+| `<Ctrl-E>`           | **Edit**: Open repository in `edit_tool` (`$EDITOR` / `nvim` / `vim`)  |
+| `<Ctrl-G>`           | **Web**: Open repository remote URL in browser                         |
+| `<Ctrl-O>`           | **Terminal**: Open interactive subshell in repository                  |
+| `<Ctrl-R>`           | **Refresh**: Fast local rescan of repository statuses                  |
+| `<Ctrl-S>`           | **Sync**: Pull upstream changes & push commits across all repositories |
+| `<Ctrl-U>`           | **Upstream**: Fetch remote tracking branches across all repositories   |
+| `<Esc>` / `<Ctrl-C>` | **Quit**: Exit `repowatch`                                             |
 
 ### ⚙️ Configuration
 
 `repowatch` can be customized using a simple configuration file located at `~/.config/repowatch/config` or `~/.repowatchrc`.
 
 To generate a starter configuration file with all available options:
+
 ```bash
-repowatch --init-config
+repowatch -i  # or: repowatch --init-config
 ```
 
 Example configuration (`~/.config/repowatch/config`):
+
 ```ini
 # Column Widths
 repo_width = 22

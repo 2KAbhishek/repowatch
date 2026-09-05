@@ -44,7 +44,7 @@ CONFIG_ICON_WEB="󰖟"
 CONFIG_ICON_SHELL=""
 CONFIG_ICON_REFRESH="󰑓"
 CONFIG_ICON_SYNC=""
-CONFIG_ICON_UPSTREAM="󰜮"
+CONFIG_ICON_UPSTREAM=""
 
 load_config() {
     local config_file="${REPOWATCH_CONFIG:-$DEFAULT_CONFIG_PATH}"
@@ -121,26 +121,26 @@ If the target directory is a Git repository, it opens directly in view_tool (def
 If not, repowatch scans child repositories and opens an interactive dashboard.
 
 Arguments:
-  directory           Directory to inspect (default: current directory)
+  directory               Directory to inspect (default: current directory)
 
 Options:
-  -d, --dirty         Show only repositories with uncommitted / unpushed changes
-  -r, --recursive     Scan recursively for nested git repositories (max depth 3)
-  -o, --overview      Force overview mode even if inside a Git repository
-  --init-config       Generate default configuration file in ~/.config/repowatch/config
-  -v, --version       Display version information
-  -h, --help          Display this help message
+  -d, --dirty             Show only repositories with uncommitted / unpushed changes
+  -r, --recursive [depth] Scan recursively for nested git repositories (default depth: 3)
+  -o, --overview          Force overview mode even if inside a Git repository
+  -i, --init-config       Generate default configuration file in ~/.config/repowatch/config
+  -v, --version           Display version information
+  -h, --help              Display this help message
 
 Keybindings (in interactive mode):
-  <Enter>             View repository in view_tool (default: lazygit)
-  <Ctrl-D>            Toggle dirty-only filter
-  <Ctrl-E>            Edit repository in edit_tool / \$EDITOR
-  <Ctrl-G>            Open repository remote in browser
-  <Ctrl-O>            Open terminal / subshell in repository
-  <Ctrl-R>            Refresh repository statuses (local scan)
-  <Ctrl-S>            Sync (pull & push) all repositories
-  <Ctrl-U>            Fetch upstream for all repositories
-  <Esc> / <Ctrl-C>    Exit repowatch
+  <Enter>                 View repository in view_tool (default: lazygit)
+  <Ctrl-D>                Toggle dirty-only filter
+  <Ctrl-E>                Edit repository in edit_tool / \$EDITOR
+  <Ctrl-G>                Open repository remote in browser
+  <Ctrl-O>                Open terminal / subshell in repository
+  <Ctrl-R>                Refresh repository statuses (local scan)
+  <Ctrl-S>                Sync (pull & push) all repositories
+  <Ctrl-U>                Fetch upstream for all repositories
+  <Esc> / <Ctrl-C>        Exit repowatch
 EOF
 }
 
@@ -386,12 +386,13 @@ find_repo_dirs() {
     local target_dir="$1"
     local recursive="$2"
     local -n _out_dirs="$3"
+    local max_depth="${4:-$CONFIG_MAX_DEPTH}"
     _out_dirs=()
 
     if [ "$recursive" = "true" ]; then
         while IFS= read -r git_entry; do
             _out_dirs+=("$(dirname "$git_entry")")
-        done < <(find "$target_dir" -maxdepth "$CONFIG_MAX_DEPTH" -name ".git" -prune -print 2>/dev/null | sort)
+        done < <(find "$target_dir" -maxdepth "$max_depth" -name ".git" -prune -print 2>/dev/null | sort)
     else
         is_git_repo "$target_dir" && _out_dirs+=("${target_dir%/}")
         for dir in "$target_dir"/*/; do
@@ -406,6 +407,7 @@ scan_repos() {
     local target_dir="$1"
     local recursive="$2"
     local dirty_filter="${3:-false}"
+    local max_depth="${4:-$CONFIG_MAX_DEPTH}"
     local repo_dirs=()
 
     local keybindings="${DIM}󰌑 ${CONFIG_ICON_VIEW} · ^d ${CONFIG_ICON_DIRTY} · ^e ${CONFIG_ICON_EDIT} · ^g ${CONFIG_ICON_WEB} · ^o ${CONFIG_ICON_SHELL} · ^r ${CONFIG_ICON_REFRESH} · ^s ${CONFIG_ICON_SYNC} · ^u ${CONFIG_ICON_UPSTREAM} ${NC}"
@@ -432,7 +434,7 @@ scan_repos() {
     echo -e "${header}\t"
     echo -e "${divider}\t"
 
-    find_repo_dirs "$target_dir" "$recursive" repo_dirs
+    find_repo_dirs "$target_dir" "$recursive" repo_dirs "$max_depth"
 
     if [ ${#repo_dirs[@]} -eq 0 ]; then
         echo -e "${YELLOW}No Git repositories found in:${NC} $target_dir\t" >&2
@@ -452,15 +454,16 @@ fetch_repos() {
     local target_dir="$1"
     local recursive="$2"
     local dirty_filter="${3:-false}"
+    local max_depth="${4:-$CONFIG_MAX_DEPTH}"
     local repo_dirs=()
 
-    find_repo_dirs "$target_dir" "$recursive" repo_dirs
+    find_repo_dirs "$target_dir" "$recursive" repo_dirs "$max_depth"
 
     if [ ${#repo_dirs[@]} -gt 0 ]; then
         printf "%s\0" "${repo_dirs[@]}" | xargs -0 -P "$CONFIG_PARALLEL_JOBS" -I {} git -C "{}" fetch --prune -q 2>/dev/null || true
     fi
 
-    scan_repos "$target_dir" "$recursive" "$dirty_filter"
+    scan_repos "$target_dir" "$recursive" "$dirty_filter" "$max_depth"
 }
 
 # Helper to sync (pull & push) a single repository
@@ -511,16 +514,17 @@ sync_repos() {
     local target_dir="$1"
     local recursive="$2"
     local dirty_filter="${3:-false}"
+    local max_depth="${4:-$CONFIG_MAX_DEPTH}"
     local repo_dirs=()
 
-    find_repo_dirs "$target_dir" "$recursive" repo_dirs
+    find_repo_dirs "$target_dir" "$recursive" repo_dirs "$max_depth"
 
     if [ ${#repo_dirs[@]} -gt 0 ]; then
         export -f sync_single_repo is_git_repo
         printf "%s\0" "${repo_dirs[@]}" | xargs -0 -P "$CONFIG_PARALLEL_JOBS" -I {} bash -c 'sync_single_repo "$@"' _ {} 2>/dev/null || true
     fi
 
-    scan_repos "$target_dir" "$recursive" "$dirty_filter"
+    scan_repos "$target_dir" "$recursive" "$dirty_filter" "$max_depth"
 }
 
 # Preview command for fzf
@@ -607,6 +611,7 @@ main() {
     local target_dir=""
     local dirty_only="${CONFIG_DIRTY_ONLY:-false}"
     local recursive="${CONFIG_RECURSIVE:-false}"
+    local max_depth="${CONFIG_MAX_DEPTH:-3}"
     local overview=false
 
     # Parse arguments
@@ -620,7 +625,7 @@ main() {
             echo "repowatch v$VERSION"
             exit 0
             ;;
-        --init-config)
+        -i | --init-config)
             init_config
             exit 0
             ;;
@@ -630,6 +635,21 @@ main() {
             ;;
         -r | --recursive)
             recursive=true
+            if [[ $# -gt 1 && "$2" =~ ^[0-9]+$ ]]; then
+                max_depth="$2"
+                CONFIG_MAX_DEPTH="$2"
+                shift 2
+            else
+                shift
+            fi
+            ;;
+        --recursive=*)
+            recursive=true
+            local val="${1#*=}"
+            if [[ "$val" =~ ^[0-9]+$ ]]; then
+                max_depth="$val"
+                CONFIG_MAX_DEPTH="$val"
+            fi
             shift
             ;;
         -o | --overview)
@@ -641,15 +661,15 @@ main() {
             exit 0
             ;;
         --scan-helper)
-            scan_repos "$2" "${3:-false}" "${4:-false}"
+            scan_repos "$2" "${3:-false}" "${4:-false}" "${5:-$CONFIG_MAX_DEPTH}"
             exit 0
             ;;
         --fetch-helper)
-            fetch_repos "$2" "${3:-false}" "${4:-false}"
+            fetch_repos "$2" "${3:-false}" "${4:-false}" "${5:-$CONFIG_MAX_DEPTH}"
             exit 0
             ;;
         --sync-helper)
-            sync_repos "$2" "${3:-false}" "${4:-false}"
+            sync_repos "$2" "${3:-false}" "${4:-false}" "${5:-$CONFIG_MAX_DEPTH}"
             exit 0
             ;;
         --browser-helper)
@@ -697,11 +717,13 @@ main() {
     # Disable terminal flow control so Ctrl-S can be captured cleanly
     stty -ixon 2>/dev/null || true
 
-    local scan_cmd="$SCRIPT_PATH --scan-helper '$target_dir' $recursive"
+    local reload_scan="$SCRIPT_PATH --scan-helper '$target_dir' $recursive false $max_depth"
+    local reload_sync="$SCRIPT_PATH --sync-helper '$target_dir' $recursive false $max_depth"
+    local reload_fetch="$SCRIPT_PATH --fetch-helper '$target_dir' $recursive false $max_depth"
 
     while true; do
         local selected
-        selected="$($scan_cmd | fzf \
+        selected="$("$SCRIPT_PATH" --scan-helper "$target_dir" "$recursive" false "$max_depth" | fzf \
             --ansi \
             --no-multi \
             --no-hscroll \
@@ -714,12 +736,12 @@ main() {
             --preview="$SCRIPT_PATH --preview-helper {2}" \
             --preview-window="right:${CONFIG_PREVIEW_PERCENT:-50}%:wrap:border-left" \
             --bind="ctrl-d:transform-query(if [[ {q} == ** ]]; then echo ''; else echo ' '; fi)" \
-            --bind="ctrl-e:execute($editor_cmd {2} < /dev/tty > /dev/tty 2>&1)+reload($scan_cmd)" \
+            --bind="ctrl-e:execute($editor_cmd {2} < /dev/tty > /dev/tty 2>&1)+reload($reload_scan)" \
             --bind="ctrl-g:execute-silent($SCRIPT_PATH --browser-helper {2})" \
-            --bind="ctrl-o:execute(cd {2} && \${SHELL:-bash} < /dev/tty > /dev/tty 2>&1)+reload($scan_cmd)" \
-            --bind="ctrl-r:reload($scan_cmd)" \
-            --bind="ctrl-s:reload($SCRIPT_PATH --sync-helper '$target_dir' $recursive)" \
-            --bind="ctrl-u:reload($SCRIPT_PATH --fetch-helper '$target_dir' $recursive)" \
+            --bind="ctrl-o:execute(cd {2} && \${SHELL:-bash} < /dev/tty > /dev/tty 2>&1)+reload($reload_scan)" \
+            --bind="ctrl-r:reload($reload_scan)" \
+            --bind="ctrl-s:reload($reload_sync)" \
+            --bind="ctrl-u:reload($reload_fetch)" \
             --expect=enter,ctrl-c,esc || true)"
 
         local key
