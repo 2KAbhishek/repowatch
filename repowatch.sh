@@ -124,6 +124,7 @@ Arguments:
 Options:
   -d, --dirty         Show only repositories with uncommitted / unpushed changes
   -r, --recursive     Scan recursively for nested git repositories (max depth 3)
+  -o, --overview      Force overview mode even if inside a Git repository
   --init-config       Generate default configuration file in ~/.config/repowatch/config
   -v, --version       Display version information
   -h, --help          Display this help message
@@ -412,6 +413,9 @@ scan_repos() {
             repo_dirs+=("$(dirname "$git_entry")")
         done < <(find "$target_dir" -maxdepth "$CONFIG_MAX_DEPTH" -name ".git" -prune -print 2>/dev/null | sort)
     else
+        if [ -d "$target_dir/.git" ] || [ -f "$target_dir/.git" ]; then
+            repo_dirs+=("${target_dir%/}")
+        fi
         for dir in "$target_dir"/*/; do
             [ -d "$dir" ] || continue
             if [ -d "$dir/.git" ] || [ -f "$dir/.git" ]; then
@@ -445,6 +449,9 @@ fetch_repos() {
             repo_dirs+=("$(dirname "$git_entry")")
         done < <(find "$target_dir" -maxdepth "$CONFIG_MAX_DEPTH" -name ".git" -prune -print 2>/dev/null | sort)
     else
+        if [ -d "$target_dir/.git" ] || [ -f "$target_dir/.git" ]; then
+            repo_dirs+=("${target_dir%/}")
+        fi
         for dir in "$target_dir"/*/; do
             [ -d "$dir" ] || continue
             if [ -d "$dir/.git" ] || [ -f "$dir/.git" ]; then
@@ -472,7 +479,7 @@ sync_single_repo() {
     if git -c gc.auto=0 --no-optional-locks -C "$repo_dir" rev-parse --abbrev-ref @{u} &>/dev/null; then
         local status_out
         status_out="$(git -c gc.auto=0 --no-optional-locks -C "$repo_dir" status --porcelain=v2 --branch 2>/dev/null || true)"
-        
+
         local ahead=0
         local behind=0
         local is_dirty=0
@@ -515,6 +522,9 @@ sync_repos() {
             repo_dirs+=("$(dirname "$git_entry")")
         done < <(find "$target_dir" -maxdepth "$CONFIG_MAX_DEPTH" -name ".git" -prune -print 2>/dev/null | sort)
     else
+        if [ -d "$target_dir/.git" ] || [ -f "$target_dir/.git" ]; then
+            repo_dirs+=("${target_dir%/}")
+        fi
         for dir in "$target_dir"/*/; do
             [ -d "$dir" ] || continue
             if [ -d "$dir/.git" ] || [ -f "$dir/.git" ]; then
@@ -615,6 +625,7 @@ main() {
     local target_dir=""
     local dirty_only="${CONFIG_DIRTY_ONLY:-false}"
     local recursive="${CONFIG_RECURSIVE:-false}"
+    local overview=false
 
     # Parse arguments
     while [[ $# -gt 0 ]]; do
@@ -637,6 +648,10 @@ main() {
             ;;
         -r | --recursive)
             recursive=true
+            shift
+            ;;
+        -o | --overview)
+            overview=true
             shift
             ;;
         --preview-helper)
@@ -682,7 +697,7 @@ main() {
     fi
 
     # 1. Single Git Repo Mode: If target is already inside a git work tree, open view_tool directly
-    if git -C "$target_dir" rev-parse --is-inside-work-tree &>/dev/null; then
+    if [ "$overview" != "true" ] && git -C "$target_dir" rev-parse --is-inside-work-tree &>/dev/null; then
         local git_root
         git_root="$(git -C "$target_dir" rev-parse --show-toplevel)"
         open_view_tool "$git_root"

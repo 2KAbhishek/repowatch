@@ -78,6 +78,9 @@ repowatch -d
 
 # Scan nested subdirectories recursively (up to depth 3)
 repowatch -r ~/Workspaces
+
+# Force overview mode even if inside a Git repository
+repowatch -o
 ```
 
 ### ⌨️ Keybindings
