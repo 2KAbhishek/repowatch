@@ -18,6 +18,8 @@ NC=$'\033[0m' # No Color
 
 SEP="${DIM}│${NC}"
 
+DEFAULT_CONFIG_PATH="${XDG_CONFIG_HOME:-$HOME/.config}/repowatch/config"
+
 # Configuration Defaults (overridden via ~/.config/repowatch/config or ~/.repowatchrc)
 CONFIG_REPO_WIDTH=22
 CONFIG_STATUS_WIDTH=10
@@ -45,7 +47,7 @@ CONFIG_ICON_SYNC=""
 CONFIG_ICON_UPSTREAM="󰜮"
 
 load_config() {
-    local config_file="${REPOWATCH_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/repowatch/config}"
+    local config_file="${REPOWATCH_CONFIG:-$DEFAULT_CONFIG_PATH}"
     [ ! -f "$config_file" ] && config_file="$HOME/.repowatchrc"
     [ ! -f "$config_file" ] && return 0
 
@@ -85,7 +87,7 @@ load_config() {
 }
 
 init_config() {
-    local target_config="${XDG_CONFIG_HOME:-$HOME/.config}/repowatch/config"
+    local target_config="$DEFAULT_CONFIG_PATH"
     if [ -f "$target_config" ]; then
         echo -e "${YELLOW}Config file already exists:${NC} $target_config"
         return 0
@@ -158,18 +160,22 @@ check_dependencies() {
     fi
 }
 
+is_git_repo() {
+    [ -d "$1/.git" ] || [ -f "$1/.git" ]
+}
+
 open_view_tool() {
     local repo_dir="$1"
     local tool="${CONFIG_VIEW_TOOL:-lazygit}"
-    if [ "$tool" = "lazygit" ]; then
-        lazygit -p "$repo_dir" 2>/dev/null || (cd "$repo_dir" && lazygit) || true
-    elif [ "$tool" = "tig" ]; then
-        (cd "$repo_dir" && tig) || true
-    elif [ "$tool" = "gitui" ]; then
-        gitui -d "$repo_dir" 2>/dev/null || (cd "$repo_dir" && gitui) || true
-    else
-        (cd "$repo_dir" && eval "$tool") || true
-    fi
+    (
+        cd "$repo_dir" || exit 1
+        case "$tool" in
+        lazygit) lazygit -p "$repo_dir" 2>/dev/null || lazygit ;;
+        gitui)   gitui -d "$repo_dir" 2>/dev/null || gitui ;;
+        tig)     tig ;;
+        *)       eval "$tool" ;;
+        esac
+    ) || true
 }
 
 format_relative_date() {
@@ -213,9 +219,7 @@ get_repo_summary() {
     local dirty_filter="${2:-false}"
     local repo_name="${repo_dir##*/}"
 
-    if [ ! -d "$repo_dir/.git" ] && [ ! -f "$repo_dir/.git" ]; then
-        return
-    fi
+    is_git_repo "$repo_dir" || return
 
     # Read porcelain v2 status and branch info in a single git execution
     local porcelain_out
@@ -377,6 +381,26 @@ get_repo_summary() {
     echo -e "${sort_key}\t${commit_time}\t${repo_col} ${SEP} ${status_col} ${SEP} ${branch_col} ${SEP} ${date_col} ${SEP} ${commit_col}\t${repo_dir}"
 }
 
+# Find all git repository directories under target_dir
+find_repo_dirs() {
+    local target_dir="$1"
+    local recursive="$2"
+    local -n _out_dirs="$3"
+    _out_dirs=()
+
+    if [ "$recursive" = "true" ]; then
+        while IFS= read -r git_entry; do
+            _out_dirs+=("$(dirname "$git_entry")")
+        done < <(find "$target_dir" -maxdepth "$CONFIG_MAX_DEPTH" -name ".git" -prune -print 2>/dev/null | sort)
+    else
+        is_git_repo "$target_dir" && _out_dirs+=("${target_dir%/}")
+        for dir in "$target_dir"/*/; do
+            [ -d "$dir" ] || continue
+            is_git_repo "$dir" && _out_dirs+=("${dir%/}")
+        done
+    fi
+}
+
 # Scan directory for git repositories with pinned headers for fzf
 scan_repos() {
     local target_dir="$1"
@@ -408,28 +432,14 @@ scan_repos() {
     echo -e "${header}\t"
     echo -e "${divider}\t"
 
-    if [ "$recursive" = "true" ]; then
-        while IFS= read -r git_entry; do
-            repo_dirs+=("$(dirname "$git_entry")")
-        done < <(find "$target_dir" -maxdepth "$CONFIG_MAX_DEPTH" -name ".git" -prune -print 2>/dev/null | sort)
-    else
-        if [ -d "$target_dir/.git" ] || [ -f "$target_dir/.git" ]; then
-            repo_dirs+=("${target_dir%/}")
-        fi
-        for dir in "$target_dir"/*/; do
-            [ -d "$dir" ] || continue
-            if [ -d "$dir/.git" ] || [ -f "$dir/.git" ]; then
-                repo_dirs+=("${dir%/}")
-            fi
-        done
-    fi
+    find_repo_dirs "$target_dir" "$recursive" repo_dirs
 
     if [ ${#repo_dirs[@]} -eq 0 ]; then
         echo -e "${YELLOW}No Git repositories found in:${NC} $target_dir\t" >&2
         return 0
     fi
 
-    export -f get_repo_summary format_relative_date
+    export -f get_repo_summary format_relative_date is_git_repo
     export RED GREEN YELLOW BLUE PURPLE CYAN BOLD DIM NC SEP
     export CONFIG_REPO_WIDTH CONFIG_STATUS_WIDTH CONFIG_BRANCH_WIDTH CONFIG_DATE_WIDTH CONFIG_COMMIT_WIDTH
     export CONFIG_ICON_CLEAN CONFIG_ICON_DIRTY CONFIG_ICON_AHEAD CONFIG_ICON_BEHIND
@@ -444,21 +454,7 @@ fetch_repos() {
     local dirty_filter="${3:-false}"
     local repo_dirs=()
 
-    if [ "$recursive" = "true" ]; then
-        while IFS= read -r git_entry; do
-            repo_dirs+=("$(dirname "$git_entry")")
-        done < <(find "$target_dir" -maxdepth "$CONFIG_MAX_DEPTH" -name ".git" -prune -print 2>/dev/null | sort)
-    else
-        if [ -d "$target_dir/.git" ] || [ -f "$target_dir/.git" ]; then
-            repo_dirs+=("${target_dir%/}")
-        fi
-        for dir in "$target_dir"/*/; do
-            [ -d "$dir" ] || continue
-            if [ -d "$dir/.git" ] || [ -f "$dir/.git" ]; then
-                repo_dirs+=("${dir%/}")
-            fi
-        done
-    fi
+    find_repo_dirs "$target_dir" "$recursive" repo_dirs
 
     if [ ${#repo_dirs[@]} -gt 0 ]; then
         printf "%s\0" "${repo_dirs[@]}" | xargs -0 -P "$CONFIG_PARALLEL_JOBS" -I {} git -C "{}" fetch --prune -q 2>/dev/null || true
@@ -470,7 +466,7 @@ fetch_repos() {
 # Helper to sync (pull & push) a single repository
 sync_single_repo() {
     local repo_dir="$1"
-    [ ! -d "$repo_dir/.git" ] && [ ! -f "$repo_dir/.git" ] && return
+    is_git_repo "$repo_dir" || return
 
     # 1. Fetch latest upstream
     git -c gc.auto=0 --no-optional-locks -C "$repo_dir" fetch --prune -q 2>/dev/null || true
@@ -517,24 +513,10 @@ sync_repos() {
     local dirty_filter="${3:-false}"
     local repo_dirs=()
 
-    if [ "$recursive" = "true" ]; then
-        while IFS= read -r git_entry; do
-            repo_dirs+=("$(dirname "$git_entry")")
-        done < <(find "$target_dir" -maxdepth "$CONFIG_MAX_DEPTH" -name ".git" -prune -print 2>/dev/null | sort)
-    else
-        if [ -d "$target_dir/.git" ] || [ -f "$target_dir/.git" ]; then
-            repo_dirs+=("${target_dir%/}")
-        fi
-        for dir in "$target_dir"/*/; do
-            [ -d "$dir" ] || continue
-            if [ -d "$dir/.git" ] || [ -f "$dir/.git" ]; then
-                repo_dirs+=("${dir%/}")
-            fi
-        done
-    fi
+    find_repo_dirs "$target_dir" "$recursive" repo_dirs
 
     if [ ${#repo_dirs[@]} -gt 0 ]; then
-        export -f sync_single_repo
+        export -f sync_single_repo is_git_repo
         printf "%s\0" "${repo_dirs[@]}" | xargs -0 -P "$CONFIG_PARALLEL_JOBS" -I {} bash -c 'sync_single_repo "$@"' _ {} 2>/dev/null || true
     fi
 
@@ -715,9 +697,11 @@ main() {
     # Disable terminal flow control so Ctrl-S can be captured cleanly
     stty -ixon 2>/dev/null || true
 
+    local scan_cmd="$SCRIPT_PATH --scan-helper '$target_dir' $recursive"
+
     while true; do
         local selected
-        selected="$("$SCRIPT_PATH" --scan-helper "$target_dir" "$recursive" | fzf \
+        selected="$($scan_cmd | fzf \
             --ansi \
             --no-multi \
             --no-hscroll \
@@ -730,10 +714,10 @@ main() {
             --preview="$SCRIPT_PATH --preview-helper {2}" \
             --preview-window="right:${CONFIG_PREVIEW_PERCENT:-50}%:wrap:border-left" \
             --bind="ctrl-d:transform-query(if [[ {q} == ** ]]; then echo ''; else echo ' '; fi)" \
-            --bind="ctrl-e:execute($editor_cmd {2} < /dev/tty > /dev/tty 2>&1)+reload($SCRIPT_PATH --scan-helper '$target_dir' $recursive)" \
+            --bind="ctrl-e:execute($editor_cmd {2} < /dev/tty > /dev/tty 2>&1)+reload($scan_cmd)" \
             --bind="ctrl-g:execute-silent($SCRIPT_PATH --browser-helper {2})" \
-            --bind="ctrl-o:execute(cd {2} && \${SHELL:-bash} < /dev/tty > /dev/tty 2>&1)+reload($SCRIPT_PATH --scan-helper '$target_dir' $recursive)" \
-            --bind="ctrl-r:reload($SCRIPT_PATH --scan-helper '$target_dir' $recursive)" \
+            --bind="ctrl-o:execute(cd {2} && \${SHELL:-bash} < /dev/tty > /dev/tty 2>&1)+reload($scan_cmd)" \
+            --bind="ctrl-r:reload($scan_cmd)" \
             --bind="ctrl-s:reload($SCRIPT_PATH --sync-helper '$target_dir' $recursive)" \
             --bind="ctrl-u:reload($SCRIPT_PATH --fetch-helper '$target_dir' $recursive)" \
             --expect=enter,ctrl-c,esc || true)"
