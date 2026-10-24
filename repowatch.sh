@@ -32,6 +32,7 @@ CONFIG_DIRTY_ONLY=false
 CONFIG_RECURSIVE=false
 CONFIG_VIEW_TOOL="lazygit"
 CONFIG_EDIT_TOOL="${EDITOR:-nvim}"
+CONFIG_SESSION_TOOL="tea"
 CONFIG_PREVIEW_PERCENT=50
 
 CONFIG_ICON_CLEAN=""
@@ -39,6 +40,7 @@ CONFIG_ICON_DIRTY=""
 CONFIG_ICON_AHEAD=""
 CONFIG_ICON_BEHIND=""
 CONFIG_ICON_VIEW=""
+CONFIG_ICON_SESSION=""
 CONFIG_ICON_EDIT=""
 CONFIG_ICON_WEB="󰖟"
 CONFIG_ICON_SHELL=""
@@ -70,12 +72,14 @@ load_config() {
         view_tool)       CONFIG_VIEW_TOOL="$val" ;;
         edit_tool)       CONFIG_EDIT_TOOL="$val" ;;
         editor)          CONFIG_EDIT_TOOL="$val" ;;
+        session_tool)    CONFIG_SESSION_TOOL="$val" ;;
         preview_percent) CONFIG_PREVIEW_PERCENT="$val" ;;
         icon_clean)      CONFIG_ICON_CLEAN="$val" ;;
         icon_dirty)      CONFIG_ICON_DIRTY="$val" ;;
         icon_ahead)      CONFIG_ICON_AHEAD="$val" ;;
         icon_behind)     CONFIG_ICON_BEHIND="$val" ;;
         icon_view)       CONFIG_ICON_VIEW="$val" ;;
+        icon_session)    CONFIG_ICON_SESSION="$val" ;;
         icon_edit)       CONFIG_ICON_EDIT="$val" ;;
         icon_web)        CONFIG_ICON_WEB="$val" ;;
         icon_shell)      CONFIG_ICON_SHELL="$val" ;;
@@ -125,6 +129,7 @@ Arguments:
 
 Options:
   -d, --dirty             Show only repositories with uncommitted / unpushed changes
+  -s, --session           Open repository as a tmux session (via tea/tmux)
   -r, --recursive [depth] Scan recursively for nested git repositories (default depth: 3)
   -o, --overview          Force overview mode even if inside a Git repository
   -i, --init-config       Generate default configuration file in ~/.config/repowatch/config
@@ -133,6 +138,7 @@ Options:
 
 Keybindings (in interactive mode):
   <Enter>                 View repository in view_tool (default: lazygit)
+  <Ctrl-T>                Session: Open repository in session_tool (default: tea)
   <Ctrl-D>                Toggle dirty-only filter
   <Ctrl-E>                Edit repository in edit_tool / \$EDITOR
   <Ctrl-G>                Open repository remote in browser
@@ -178,6 +184,29 @@ open_view_tool() {
     ) || true
 }
 
+open_session_tool() {
+    local repo_dir="$1"
+    local tool="${CONFIG_SESSION_TOOL:-tea}"
+
+    if [ -n "$tool" ] && command -v "$tool" &>/dev/null; then
+        "$tool" "$repo_dir"
+    elif command -v tea &>/dev/null; then
+        tea "$repo_dir"
+    elif [ -n "$TMUX" ]; then
+        local sname
+        sname="$(basename "$repo_dir" | tr ' .:' '_')"
+        tmux new-session -d -s "$sname" -c "$repo_dir" 2>/dev/null || true
+        tmux switch-client -t "$sname"
+    elif command -v tmux &>/dev/null; then
+        local sname
+        sname="$(basename "$repo_dir" | tr ' .:' '_')"
+        tmux new-session -A -s "$sname" -c "$repo_dir"
+    else
+        echo -e "${RED}Error:${NC} Neither session tool '$tool' nor tmux found in PATH." >&2
+        sleep 1
+    fi
+}
+
 format_relative_date() {
     local d="$1"
     d="${d% ago}"
@@ -219,7 +248,7 @@ get_repo_summary() {
     local dirty_filter="${2:-false}"
     local repo_name="${repo_dir##*/}"
 
-    is_git_repo "$repo_dir" || return
+    is_git_repo "$repo_dir" || return 0
 
     # Read porcelain v2 status and branch info in a single git execution
     local porcelain_out
@@ -227,7 +256,7 @@ get_repo_summary() {
 
     if [ -z "$porcelain_out" ]; then
         if [ "$dirty_filter" = "true" ]; then
-            return
+            return 0
         fi
         local empty_pad=$((CONFIG_STATUS_WIDTH - 3))
         ((empty_pad < 0)) && empty_pad=0
@@ -246,7 +275,7 @@ get_repo_summary() {
         local commit_col="${DIM}${commit_pad}${NC}"
 
         echo -e "1\t0\t${repo_col} ${SEP} ${status_col} ${SEP} ${branch_col} ${SEP} ${date_col} ${SEP} ${commit_col}\t${repo_dir}"
-        return
+        return 0
     fi
 
     local branch="unknown"
@@ -285,11 +314,13 @@ get_repo_summary() {
     done <<<"$porcelain_out"
 
     local is_dirty=0
-    ((staged > 0 || unstaged > 0 || untracked > 0 || conflicted > 0)) && is_dirty=1
+    if ((staged > 0 || unstaged > 0 || untracked > 0 || conflicted > 0)); then
+        is_dirty=1
+    fi
 
     # Filter out clean repos if dirty_filter is set
     if [ "$dirty_filter" = "true" ] && ((is_dirty == 0 && ahead == 0 && behind == 0)); then
-        return
+        return 0
     fi
 
     # 1. Status column (Status Icon + Sync + Local changes)
@@ -379,6 +410,7 @@ get_repo_summary() {
 
     # Aligned output with vertical column separators
     echo -e "${sort_key}\t${commit_time}\t${repo_col} ${SEP} ${status_col} ${SEP} ${branch_col} ${SEP} ${date_col} ${SEP} ${commit_col}\t${repo_dir}"
+    return 0
 }
 
 # Find all git repository directories under target_dir
@@ -387,19 +419,40 @@ find_repo_dirs() {
     local recursive="$2"
     local -n _out_dirs="$3"
     local max_depth="${4:-$CONFIG_MAX_DEPTH}"
+    local dir git_entry
     _out_dirs=()
 
     if [ "$recursive" = "true" ]; then
         while IFS= read -r git_entry; do
-            _out_dirs+=("$(dirname "$git_entry")")
+            [ -n "$git_entry" ] && _out_dirs+=("$(dirname "$git_entry")")
         done < <(find "$target_dir" -maxdepth "$max_depth" -name ".git" -prune -print 2>/dev/null | sort)
     else
-        is_git_repo "$target_dir" && _out_dirs+=("${target_dir%/}")
+        if is_git_repo "$target_dir"; then
+            _out_dirs+=("${target_dir%/}")
+        fi
         for dir in "$target_dir"/*/; do
             [ -d "$dir" ] || continue
-            is_git_repo "$dir" && _out_dirs+=("${dir%/}")
+            if is_git_repo "$dir"; then
+                _out_dirs+=("${dir%/}")
+            fi
         done
+
+        # If non-recursive scan found no git repositories (e.g. target_dir is a collection
+        # like ~/Projects where repos are nested under namespaces/groups), fall back to
+        # scanning up to max_depth so repos are discovered
+        if [ ${#_out_dirs[@]} -eq 0 ]; then
+            while IFS= read -r git_entry; do
+                [ -n "$git_entry" ] && _out_dirs+=("$(dirname "$git_entry")")
+            done < <(find "$target_dir" -maxdepth "$max_depth" -name ".git" -prune -print 2>/dev/null | sort)
+        fi
     fi
+
+    # Deduplicate entries if any
+    if [ ${#_out_dirs[@]} -gt 0 ]; then
+        readarray -t _out_dirs < <(printf '%s\n' "${_out_dirs[@]}" | sort -u)
+    fi
+
+    return 0
 }
 
 # Scan directory for git repositories with pinned headers for fzf
@@ -410,7 +463,7 @@ scan_repos() {
     local max_depth="${4:-$CONFIG_MAX_DEPTH}"
     local repo_dirs=()
 
-    local keybindings="${DIM}󰌑 ${CONFIG_ICON_VIEW} · ^d ${CONFIG_ICON_DIRTY} · ^e ${CONFIG_ICON_EDIT} · ^g ${CONFIG_ICON_WEB} · ^o ${CONFIG_ICON_SHELL} · ^r ${CONFIG_ICON_REFRESH} · ^s ${CONFIG_ICON_SYNC} · ^u ${CONFIG_ICON_UPSTREAM} ${NC}"
+    local keybindings="${DIM}󰌑 ${CONFIG_ICON_VIEW} · ^t ${CONFIG_ICON_SESSION} · ^d ${CONFIG_ICON_DIRTY} · ^e ${CONFIG_ICON_EDIT} · ^g ${CONFIG_ICON_WEB} · ^o ${CONFIG_ICON_SHELL} · ^r ${CONFIG_ICON_REFRESH} · ^s ${CONFIG_ICON_SYNC} · ^u ${CONFIG_ICON_UPSTREAM} ${NC}"
 
     local h_repo h_status h_branch h_date h_commit
     printf -v h_repo "%-*s" "$CONFIG_REPO_WIDTH" "Repository"
@@ -437,16 +490,18 @@ scan_repos() {
     find_repo_dirs "$target_dir" "$recursive" repo_dirs "$max_depth"
 
     if [ ${#repo_dirs[@]} -eq 0 ]; then
-        echo -e "${YELLOW}No Git repositories found in:${NC} $target_dir\t" >&2
+        local empty_pad
+        printf -v empty_pad "%-*s" "$CONFIG_REPO_WIDTH" "No git repositories found"
+        echo -e "${DIM}${empty_pad}${NC} ${SEP} ${DIM}-${NC} ${SEP} ${DIM}-${NC} ${SEP} ${DIM}-${NC} ${SEP} ${DIM}No Git repos found in $target_dir${NC}\t"
         return 0
     fi
 
     export -f get_repo_summary format_relative_date is_git_repo
     export RED GREEN YELLOW BLUE PURPLE CYAN BOLD DIM NC SEP
     export CONFIG_REPO_WIDTH CONFIG_STATUS_WIDTH CONFIG_BRANCH_WIDTH CONFIG_DATE_WIDTH CONFIG_COMMIT_WIDTH
-    export CONFIG_ICON_CLEAN CONFIG_ICON_DIRTY CONFIG_ICON_AHEAD CONFIG_ICON_BEHIND
+    export CONFIG_ICON_CLEAN CONFIG_ICON_DIRTY CONFIG_ICON_AHEAD CONFIG_ICON_BEHIND CONFIG_ICON_SESSION
 
-    printf "%s\0" "${repo_dirs[@]}" | xargs -0 -P "$CONFIG_PARALLEL_JOBS" -I {} bash -c 'get_repo_summary "$@" '"$dirty_filter" _ {} | sort -k1,1n -k2,2nr | cut -f3-
+    printf "%s\0" "${repo_dirs[@]}" | xargs -0 -P "$CONFIG_PARALLEL_JOBS" -I {} bash -c 'get_repo_summary "$@"' _ {} "$dirty_filter" | sort -k1,1n -k2,2nr | cut -f3-
 }
 
 # Fetch upstream tracking branches across all repositories, then scan
@@ -469,13 +524,13 @@ fetch_repos() {
 # Helper to sync (pull & push) a single repository
 sync_single_repo() {
     local repo_dir="$1"
-    is_git_repo "$repo_dir" || return
+    is_git_repo "$repo_dir" || return 0
 
     # 1. Fetch latest upstream
     git -c gc.auto=0 --no-optional-locks -C "$repo_dir" fetch --prune -q 2>/dev/null || true
 
     # 2. Check tracking branch and status
-    if git -c gc.auto=0 --no-optional-locks -C "$repo_dir" rev-parse --abbrev-ref @{u} &>/dev/null; then
+    if git -c gc.auto=0 --no-optional-locks -C "$repo_dir" rev-parse --abbrev-ref '@{u}' &>/dev/null; then
         local status_out
         status_out="$(git -c gc.auto=0 --no-optional-locks -C "$repo_dir" status --porcelain=v2 --branch 2>/dev/null || true)"
 
@@ -507,6 +562,7 @@ sync_single_repo() {
             git -c gc.auto=0 --no-optional-locks -C "$repo_dir" push -q 2>/dev/null || true
         fi
     fi
+    return 0
 }
 
 # Full batch sync: Pull upstream changes and push local commits across all repositories
@@ -549,11 +605,11 @@ preview_repo() {
     echo
 
     local unpushed_count
-    unpushed_count="$(git -c gc.auto=0 --no-optional-locks -C "$repo_dir" rev-list --count @{u}..HEAD 2>/dev/null || echo 0)"
+    unpushed_count="$(git -c gc.auto=0 --no-optional-locks -C "$repo_dir" rev-list --count '@{u}..HEAD' 2>/dev/null || echo 0)"
     if ((unpushed_count > 0)); then
         echo -e "${DIM}$rule${NC}"
         echo -e "${BOLD}${CYAN} Unpushed Commits (${unpushed_count}):${NC}"
-        git -c color.ui=always --no-optional-locks -C "$repo_dir" log -n 5 --graph --pretty=format:'%C(yellow)%h%Creset %C(cyan)%cr%Creset %s' @{u}..HEAD 2>&1 || true
+        git -c color.ui=always --no-optional-locks -C "$repo_dir" log -n 5 --graph --pretty=format:'%C(yellow)%h%Creset %C(cyan)%cr%Creset %s' '@{u}..HEAD' 2>&1 || true
         echo
         if ((unpushed_count > 5)); then
             echo -e "${DIM}... and $((unpushed_count - 5)) more unpushed commits${NC}\n"
@@ -584,7 +640,7 @@ open_in_browser() {
     local remote_url
     remote_url="$(git -C "$repo_dir" remote get-url origin 2>/dev/null || true)"
     if [ -z "$remote_url" ]; then
-        return
+        return 0
     fi
 
     local web_url="$remote_url"
@@ -602,6 +658,7 @@ open_in_browser() {
     elif command -v open &>/dev/null; then
         open "$web_url" &>/dev/null &
     fi
+    return 0
 }
 
 main() {
@@ -613,6 +670,7 @@ main() {
     local recursive="${CONFIG_RECURSIVE:-false}"
     local max_depth="${CONFIG_MAX_DEPTH:-3}"
     local overview=false
+    local session_mode=false
 
     # Parse arguments
     while [[ $# -gt 0 ]]; do
@@ -631,6 +689,10 @@ main() {
             ;;
         -d | --dirty)
             dirty_only=true
+            shift
+            ;;
+        -s | --session)
+            session_mode=true
             shift
             ;;
         -r | --recursive)
@@ -699,16 +761,20 @@ main() {
     fi
 
     # 1. Single Git Repo Mode: If target is already inside a git work tree, open view_tool directly
-    if [ "$overview" != "true" ] && git -C "$target_dir" rev-parse --is-inside-work-tree &>/dev/null; then
+    if [ "$overview" != "true" ] && [ "$dirty_only" != "true" ] && [ "$recursive" != "true" ] && git -C "$target_dir" rev-parse --is-inside-work-tree &>/dev/null; then
         local git_root
         git_root="$(git -C "$target_dir" rev-parse --show-toplevel)"
-        open_view_tool "$git_root"
+        if [ "$session_mode" = "true" ]; then
+            open_session_tool "$git_root"
+        else
+            open_view_tool "$git_root"
+        fi
         exit 0
     fi
 
     # 2. Multi-Repo Mode: Interactive Dashboard
     local initial_query=""
-    [ "$dirty_only" = true ] && initial_query=" "
+    [ "$dirty_only" = true ] && initial_query="${CONFIG_ICON_DIRTY} "
 
     local editor_cmd="${CONFIG_EDIT_TOOL:-${EDITOR:-nvim}}"
     command -v "$editor_cmd" &>/dev/null || editor_cmd="vim"
@@ -735,14 +801,14 @@ main() {
             --query="$initial_query" \
             --preview="$SCRIPT_PATH --preview-helper {2}" \
             --preview-window="right:${CONFIG_PREVIEW_PERCENT:-50}%:wrap:border-left" \
-            --bind="ctrl-d:transform-query(if [[ {q} == ** ]]; then echo ''; else echo ' '; fi)" \
+            --bind="ctrl-d:transform-query(if [[ {q} == *${CONFIG_ICON_DIRTY}* ]]; then echo ''; else echo '${CONFIG_ICON_DIRTY} '; fi)" \
             --bind="ctrl-e:execute($editor_cmd {2} < /dev/tty > /dev/tty 2>&1)+reload($reload_scan)" \
             --bind="ctrl-g:execute-silent($SCRIPT_PATH --browser-helper {2})" \
             --bind="ctrl-o:execute(cd {2} && \${SHELL:-bash} < /dev/tty > /dev/tty 2>&1)+reload($reload_scan)" \
             --bind="ctrl-r:reload($reload_scan)" \
             --bind="ctrl-s:reload($reload_sync)" \
             --bind="ctrl-u:reload($reload_fetch)" \
-            --expect=enter,ctrl-c,esc || true)"
+            --expect=enter,ctrl-t,ctrl-c,esc || true)"
 
         local key
         key="$(echo "$selected" | head -n1)"
@@ -756,6 +822,10 @@ main() {
         local repo_path="${selection##*$'\t'}"
 
         if [ -n "$repo_path" ] && [ -d "$repo_path" ]; then
+            if [[ "$key" == "ctrl-t" ]] || [ "$session_mode" = "true" ]; then
+                open_session_tool "$repo_path"
+                break
+            fi
             initial_query=""
             open_view_tool "$repo_path"
         else

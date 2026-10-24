@@ -37,6 +37,9 @@ view_tool = lazygit
 # Preferred editor for <Ctrl-E> (defaults to $EDITOR, nvim, vim, or nano)
 # edit_tool = nvim
 
+# Session manager for <Ctrl-T> (tea, tmux, or custom command)
+session_tool = tea
+
 # -----------------------------------------------------------------------------
 # Icons & Glyphs (Nerd Fonts)
 # -----------------------------------------------------------------------------
@@ -45,6 +48,7 @@ icon_dirty = 
 icon_ahead = 
 icon_behind = 
 icon_view = 
+icon_session = 
 icon_edit = 
 icon_web = 󰖟
 icon_shell = 

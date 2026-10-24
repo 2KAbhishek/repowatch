@@ -81,6 +81,9 @@ repowatch -r 5 ~/Workspaces
 
 # Force overview mode even if inside a Git repository
 repowatch -o
+
+# Open repository directly as a tmux session (via tea/tmux)
+repowatch -s
 ```
 
 ### ⌨️ Keybindings
@@ -88,6 +91,7 @@ repowatch -o
 | Key                  | Action                                                                 |
 | :------------------- | :--------------------------------------------------------------------- |
 | `<Enter>`            | **View**: Open repository in `view_tool` (default: `lazygit`, `tig`)   |
+| `<Ctrl-T>`           | **Session**: Open repository in `session_tool` ([`tea`][1] / `tmux`)   |
 | `<Ctrl-D>`           | **Dirty**: Toggle filter for dirty repositories                        |
 | `<Ctrl-E>`           | **Edit**: Open repository in `edit_tool` (`$EDITOR` / `nvim` / `vim`)  |
 | `<Ctrl-G>`           | **Web**: Open repository remote URL in browser                         |
@@ -127,6 +131,7 @@ preview_percent = 50
 # Tools
 view_tool = lazygit   # lazygit, tig, gitui, or any git viewer
 edit_tool = nvim      # defaults to $EDITOR, nvim, vim, or nano
+session_tool = tea    # defaults to tea or tmux
 
 # Icons & Badges (Nerd Fonts)
 icon_clean = 
@@ -134,6 +139,7 @@ icon_dirty = 
 icon_ahead = 
 icon_behind = 
 icon_view = 
+icon_session = 
 icon_edit = 
 icon_web = 󰖟
 icon_shell = 
@@ -161,8 +167,12 @@ Managing dozens of local repositories across workspaces makes it easy to lose tr
 
 ### 🔍 More Info
 
+- [tmux-tea](https://github.com/2kabhishek/tmux-tea) — tmux sessions as easy as tea
+- [tmux-tilit](https://github.com/2kabhishek/tmux-tilit) — Better tiling for tmux
 - [bare-minimum](https://github.com/2kabhishek/bare-minimum) — General purpose template
 - [gh-repo-man](https://github.com/2kabhishek/gh-repo-man) — GitHub repo manager
+
+[1]: https://github.com/2kabhishek/tmux-tea
 
 <hr>
 
